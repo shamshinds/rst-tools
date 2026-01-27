@@ -1,23 +1,32 @@
 import { RstVariable } from '../variables/variableTypes';
 
-const VAR_DEF_REGEX =
- /^\.\.\s+\|([^|]+)\|\s+replace::\s+(.+)$/gm;
+const VAR_TEXT = /^\s*\.\.\s+\|(.+?)\|\s+replace::\s+(.+)$/gm;
+const VAR_IMAGE = /^\s*\.\.\s+\|(.+?)\|\s+\.\.\s+image::\s+(.+)$/gm;
 
-export function extractVariables(
- content: string,
- source: string
-): Map<string, RstVariable> {
+export function extractVariables(text: string, file: string): Map<string, RstVariable> {
+ const vars = new Map<string, RstVariable>();
 
- const map = new Map<string, RstVariable>();
- let match;
+ let m;
 
- while ((match = VAR_DEF_REGEX.exec(content)) !== null) {
-  map.set(match[1], {
-   name: match[1],
-   value: match[2],
-   source
+ // Текстовые
+ while ((m = VAR_TEXT.exec(text)) !== null) {
+  vars.set(m[1], {
+   name: m[1],
+   value: m[2].trim(),
+   kind: 'text',
+   source: file
   });
  }
 
- return map;
+ // Картинки
+ while ((m = VAR_IMAGE.exec(text)) !== null) {
+  vars.set(m[1], {
+   name: m[1],
+   kind: 'image',
+   source: file,
+   imagePath: m[2].trim()
+  });
+ }
+
+ return vars;
 }

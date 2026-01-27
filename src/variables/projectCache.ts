@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 import { parseIncludes } from '../parsing/confParser';
 import { extractVariables } from '../parsing/rstParser';
 import { RstVariable } from './variableTypes';
@@ -26,9 +27,25 @@ export class ProjectCache {
     if (!fs.existsSync(file)) continue;
 
     const text = this.readFile(file);
-    extractVariables(text, file).forEach((v, k) =>
-     this.variables.set(k, v)
-    );
+    extractVariables(text, file).forEach((v, name) => {
+
+     /* --------------------------------------------------------
+      *  НОРМАЛИЗАЦИЯ ПУТЕЙ ИЗОБРАЖЕНИЙ
+      *  ВАЖНО: image:: путь задаётся ОТНОСИТЕЛЬНО conf.py
+      * -------------------------------------------------------- */
+     if (v.kind === 'image' && v.imagePath) {
+
+      // Директория конфигурации проекта
+      const confDir = path.dirname(this.confPath);
+
+      // Реальный абсолютный путь до файла изображения
+      v.imagePath = path.normalize(
+       path.join(confDir, v.imagePath)
+      );
+     }
+
+     this.variables.set(name, v);
+    });
 
     this.watch(file);
    }
