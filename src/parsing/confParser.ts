@@ -11,21 +11,28 @@ export async function parseIncludes(confPath: string): Promise<string[]> {
   d => d.fileName === confPath
  );
 
- if (openDoc) {
-  text = openDoc.getText();
- } else {
-  text = fs.readFileSync(confPath, 'utf-8');
- }
+ text = openDoc
+  ? openDoc.getText()
+  : fs.readFileSync(confPath, 'utf-8');
 
  const includes: string[] = [];
- let match;
+ let match: RegExpExecArray | null;
 
  while ((match = INCLUDE_REGEX.exec(text)) !== null) {
-  includes.push(
-   path.normalize(
-    path.join(path.dirname(confPath), match[1].trim())
-   )
+
+  const raw = match[1].trim();
+
+  // 🔹 ключевой момент:
+  // удаляем только ведущие "/" или "\" ПЕРЕД ".."
+  // но не трогаем остальные пути
+  const cleaned = raw.replace(/^[/\\]+(?=\.)/, '');
+
+  // 🔹 строим путь как относительный к каталогу conf.py
+  const full = path.normalize(
+   path.join(path.dirname(confPath), cleaned)
   );
+
+  includes.push(full);
  }
 
  return includes;
