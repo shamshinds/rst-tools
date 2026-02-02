@@ -1,5 +1,3 @@
-// src/providers/docDiagnosticsProvider.ts
-
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,6 +32,23 @@ function resolveWorkspaceRootFromFile(filePath: string): string | null {
  return null;
 }
 
+function normalizeDocTarget(raw: string): string {
+ let p = raw.trim();
+
+ // :doc:`text <path>`
+ const lt = p.lastIndexOf('<');
+ const gt = p.lastIndexOf('>');
+ if (lt !== -1 && gt !== -1 && gt > lt) {
+  p = p.slice(lt + 1, gt).trim();
+ }
+
+ if (p && !p.endsWith('.rst') && !p.endsWith('/')) {
+  p += '.rst';
+ }
+
+ return p;
+}
+
 /* ======================= provider ======================= */
 
 export function registerDocDiagnosticsProvider(
@@ -58,13 +73,15 @@ export function registerDocDiagnosticsProvider(
   let match: RegExpExecArray | null;
 
   while ((match = DOC_LINK_REGEX.exec(text)) !== null) {
-   const link = match[1];
+   const inside = match[1];
    const start = doc.positionAt(match.index + 6);
-   const end = doc.positionAt(match.index + 6 + link.length);
+   const end = doc.positionAt(match.index + 6 + inside.length);
    const range = new vscode.Range(start, end);
 
-   /* ---------------------- EXTERNAL ---------------------- */
+   const link = normalizeDocTarget(inside);
+   if (!link) continue;
 
+   // external
    if (link.includes(':')) {
     const [projectId, relPath] = link.split(':', 2);
 
@@ -94,7 +111,7 @@ export function registerDocDiagnosticsProvider(
      diagnostics.push(
       new vscode.Diagnostic(
        range,
-       'Файл не найден в проекте',
+       `Файл не найден: ${projectId}:${relPath}`,
        vscode.DiagnosticSeverity.Error
       )
      );
@@ -103,8 +120,7 @@ export function registerDocDiagnosticsProvider(
     continue;
    }
 
-   /* ----------------------- LOCAL ------------------------ */
-
+   // local
    const target = path.resolve(
     path.dirname(doc.fileName),
     link
@@ -114,7 +130,7 @@ export function registerDocDiagnosticsProvider(
     diagnostics.push(
      new vscode.Diagnostic(
       range,
-      'Файл не найден',
+      `Файл не найден: ${link}`,
       vscode.DiagnosticSeverity.Error
      )
     );
@@ -124,13 +140,23 @@ export function registerDocDiagnosticsProvider(
   collection.set(doc.uri, diagnostics);
  }
 
+ function validateActiveEditor() {
+  const doc = vscode.window.activeTextEditor?.document;
+  if (doc) validate(doc);
+ }
+
+ // ✅ Валидация всех открытых документов при активации
  vscode.workspace.textDocuments.forEach(validate);
 
  context.subscriptions.push(
   vscode.workspace.onDidOpenTextDocument(validate),
   vscode.workspace.onDidChangeTextDocument(e => validate(e.document)),
-  vscode.workspace.onDidCloseTextDocument(doc =>
-   collection.delete(doc.uri)
-  )
+  vscode.workspace.onDidCloseTextDocument(doc => collection.delete(doc.uri)),
+
+  // ✅ Валидация при переключении активного редактора
+  vscode.window.onDidChangeActiveTextEditor(() => validateActiveEditor())
  );
+
+ // ✅ Прогон после старта (на случай асинхронных индексов)
+ setTimeout(() => validateActiveEditor(), 300);
 }

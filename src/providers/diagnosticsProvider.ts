@@ -9,6 +9,8 @@ export function registerDiagnosticsProvider(
  const collection =
   vscode.languages.createDiagnosticCollection('rst-vars');
 
+ context.subscriptions.push(collection);
+
  async function validate(doc: vscode.TextDocument) {
   if (doc.languageId !== 'restructuredtext') return;
 
@@ -18,7 +20,7 @@ export function registerDiagnosticsProvider(
   const text = doc.getText();
   const REG = /\|([^|]+)\|/g;
 
-  let match;
+  let match: RegExpExecArray | null;
 
   while ((match = REG.exec(text)) !== null) {
    const name = match[1];
@@ -27,16 +29,11 @@ export function registerDiagnosticsProvider(
    const pos = doc.positionAt(match.index);
    const range = new vscode.Range(pos, pos);
 
-   // ---------------------------------------
-   // Пропускаем строку, где переменная объявляется
-   // ---------------------------------------
+   // не ругаемся на объявление переменной
    if (doc.lineAt(pos.line).text.trim().startsWith('.. |')) {
     continue;
    }
 
-   // ---------------------------------------
-   // Переменная не найдена
-   // ---------------------------------------
    if (!variable) {
     diags.push(
      new vscode.Diagnostic(
@@ -48,10 +45,7 @@ export function registerDiagnosticsProvider(
     continue;
    }
 
-   /* ======================================================
-    *  ПОДДЕРЖКА ПЕРЕМЕННЫХ-КАРТИНОК (image:: ...)
-    *  Проверяем, что файл реально существует
-    * ====================================================== */
+   // проверка существования файла изображения
    if (variable.kind === 'image' && variable.imagePath) {
     if (!fs.existsSync(variable.imagePath)) {
      diags.push(
@@ -68,13 +62,23 @@ export function registerDiagnosticsProvider(
   collection.set(doc.uri, diags);
  }
 
+ function validateActiveEditor() {
+  const doc = vscode.window.activeTextEditor?.document;
+  if (doc) validate(doc);
+ }
+
+ // ✅ Валидация всех уже открытых документов при активации
  vscode.workspace.textDocuments.forEach(validate);
 
  context.subscriptions.push(
   vscode.workspace.onDidOpenTextDocument(validate),
   vscode.workspace.onDidChangeTextDocument(e => validate(e.document)),
-  vscode.workspace.onDidCloseTextDocument(doc =>
-   collection.delete(doc.uri)
-  )
+  vscode.workspace.onDidCloseTextDocument(doc => collection.delete(doc.uri)),
+
+  // ✅ Валидация при переключении вкладки/редактора
+  vscode.window.onDidChangeActiveTextEditor(() => validateActiveEditor())
  );
+
+ // ✅ Дополнительный прогон после старта (когда всё успело проиндексироваться)
+ setTimeout(() => validateActiveEditor(), 300);
 }
