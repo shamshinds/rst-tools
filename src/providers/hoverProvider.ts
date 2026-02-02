@@ -5,6 +5,14 @@ import { indexVariables } from '../variables/variableIndex';
 import { ensureThumb } from '../images/thumbnailCache';
 import { OPEN_IMAGE_CMD } from '../images/previewCommand';
 
+function escapeForMarkdownCode(s: string): string {
+ // ВАЖНО: в markdown "\_" воспринимается как escape,
+ // поэтому визуально пропадает "\".
+ // Внутри `code` это почти не нужно, но VS Code иногда смешивает режимы,
+ // поэтому экранируем явно.
+ return s.replace(/\\/g, '\\\\');
+}
+
 export function registerHoverProvider(
  context: vscode.ExtensionContext
 ) {
@@ -24,53 +32,49 @@ export function registerHoverProvider(
     }
 
     /* =======================================================
-     * TEXT VARIABLES — оставляем существующее поведение
+     * TEXT VARIABLES — MarkdownString (фикс отображения путей)
      * ======================================================= */
     if (variable.kind === 'text') {
-     return new vscode.Hover([
-      `**${name}**`,
-      '```',
-      variable.value ?? '',
-      '```',
-      `Источник: ${variable.source}`
-     ]);
+     const md = new vscode.MarkdownString();
+     md.appendMarkdown(`**${name}**\n\n`);
+     md.appendMarkdown('```text\n');
+     md.appendMarkdown(`${variable.value ?? ''}\n`);
+     md.appendMarkdown('```\n\n');
+     md.appendMarkdown(`Источник: \`${variable.source}\``);
+
+     return new vscode.Hover(md);
     }
+
 
     /* =======================================================
      * IMAGE VARIABLES — миниатюра + кнопка "Открыть"
      * ======================================================= */
     if (variable.kind === 'image' && variable.imagePath) {
-
      const md = new vscode.MarkdownString();
      md.isTrusted = true;
 
      md.appendMarkdown(`**${name}** — изображение\n\n`);
 
      if (fs.existsSync(variable.imagePath)) {
-
-      // генерируем (или берём из кеша) превью
       const thumbPath = await ensureThumb(variable.imagePath);
       const thumbUri = vscode.Uri.file(thumbPath);
 
-      // ссылка-команда на оригинал
       const fullArg = JSON.stringify(variable.imagePath);
 
       md.appendMarkdown(
        `![thumbnail](${thumbUri.toString()})\n\n` +
        `[Открыть полноразмерное изображение](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
       );
-
      } else {
       md.appendMarkdown(
-       `_Файл изображения не найден_\n\n${variable.imagePath}\n\n`
+       `_Файл изображения не найден_\n\n\`${escapeForMarkdownCode(variable.imagePath)}\`\n\n`
       );
      }
 
-     md.appendMarkdown(`Источник: ${variable.source}`);
+     md.appendMarkdown(`Источник: \`${escapeForMarkdownCode(variable.source)}\``);
      return new vscode.Hover(md);
     }
 
-    // fallback для неизвестных типов
     return new vscode.Hover(`**${name}** (Неизвестный тип переменной)`);
    }
   }
