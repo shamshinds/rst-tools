@@ -8,6 +8,7 @@ import { registerDocDiagnosticsProvider } from './providers/docDiagnosticsProvid
 import { registerDocDefinitionProvider } from './providers/docDefinitionProvider';
 import { registerImagePreviewCommand } from './images/previewCommand';
 import { startThumbCleanupScheduler } from './images/cleanupScheduler';
+import { registerDocHoverProvider } from './providers/docHoverProvider';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -23,6 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
  registerDocCompletionProvider(context);
  registerDocDiagnosticsProvider(context);
  registerDocDefinitionProvider(context);
+ registerDocHoverProvider(context);
  
 }
 
