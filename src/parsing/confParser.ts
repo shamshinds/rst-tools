@@ -8,31 +8,31 @@ export async function parseIncludes(confPath: string): Promise<string[]> {
  let text: string;
 
  const openDoc = vscode.workspace.textDocuments.find(
-  d => d.fileName === confPath
+  (d: vscode.TextDocument) => d.fileName === confPath
  );
 
- text = openDoc
-  ? openDoc.getText()
-  : fs.readFileSync(confPath, 'utf-8');
+ if (openDoc) {
+  text = openDoc.getText();
+ } else {
+  text = fs.readFileSync(confPath, 'utf-8');
+ }
 
  const includes: string[] = [];
  let match: RegExpExecArray | null;
 
  while ((match = INCLUDE_REGEX.exec(text)) !== null) {
-
   const raw = match[1].trim();
 
-  // 🔹 ключевой момент:
-  // удаляем только ведущие "/" или "\" ПЕРЕД ".."
-  // но не трогаем остальные пути
-  const cleaned = raw.replace(/^[/\\]+(?=\.)/, '');
+  // ✅ ВАЖНО: include часто начинается с "/../" (sphinx-style),
+  // это НЕ абсолютный путь ОС, поэтому убираем ведущие слеши
+  const cleaned = raw.replace(/^[/\\]+/, '');
 
-  // 🔹 строим путь как относительный к каталогу conf.py
-  const full = path.normalize(
-   path.join(path.dirname(confPath), cleaned)
-  );
+  // ✅ Абсолютный путь относительно conf.py
+  const full = path.resolve(path.dirname(confPath), cleaned);
 
-  includes.push(full);
+  // ✅ Нормализация (гарантирует корректные separators)
+  console.log('[INCLUDE]', raw, '=>', full);
+  includes.push(path.normalize(full));
  }
 
  return includes;

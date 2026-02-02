@@ -29,23 +29,18 @@ export class ProjectCache {
     const text = this.readFile(file);
     extractVariables(text, file).forEach((v, name) => {
 
-     /* --------------------------------------------------------
-      *  НОРМАЛИЗАЦИЯ ПУТЕЙ ИЗОБРАЖЕНИЙ
-      *  ВАЖНО: image:: путь задаётся ОТНОСИТЕЛЬНО conf.py
-      * -------------------------------------------------------- */
+     // ✅ страховка: всегда нормализуем путь источника
+     v.source = path.normalize(v.source);
+
      if (v.kind === 'image' && v.imagePath) {
-
-      // Директория конфигурации проекта
       const confDir = path.dirname(this.confPath);
-
-      // Реальный абсолютный путь до файла изображения
-      v.imagePath = path.normalize(
-       path.join(confDir, v.imagePath)
-      );
+      v.imagePath = path.normalize(path.join(confDir, v.imagePath));
      }
-
+     console.log('[CACHE SET]', name, 'source=', v.source);
      this.variables.set(name, v);
     });
+
+
 
     this.watch(file);
    }
