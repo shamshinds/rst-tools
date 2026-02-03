@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { parseIncludes } from '../parsing/confParser';
 import { extractVariables } from '../parsing/rstParser';
-import { RstVariable } from './variableTypes';
+import { RstVariable } from '../variables/variableTypes';
+import { resolveRstPath } from '../utils/pathResolver';
 
 export class ProjectCache {
  private variables = new Map<string, RstVariable>();
@@ -27,35 +29,32 @@ export class ProjectCache {
     if (!fs.existsSync(file)) continue;
 
     const text = this.readFile(file);
-    extractVariables(text, file).forEach((v, name) => {
 
-     // ✅ страховка: всегда нормализуем путь источника
+    extractVariables(text, file).forEach((v, name) => {
+     // всегда нормализуем source
      v.source = path.normalize(v.source);
 
+     // ✅ FIX: imagePath может быть:
+     // - "/../../..." (от conf.py)
+     // - "./..." или "../..." (от текущего rsti файла)
      if (v.kind === 'image' && v.imagePath) {
-      const confDir = path.dirname(this.confPath);
-      v.imagePath = path.normalize(path.join(confDir, v.imagePath));
+      v.imagePath = resolveRstPath(v.imagePath, file, this.confPath);
      }
-     console.log('[CACHE SET]', name, 'source=', v.source);
+
      this.variables.set(name, v);
     });
-
-
 
     this.watch(file);
    }
   }, 100);
  }
 
-
  getVariables() {
   return this.variables;
  }
 
  private readFile(file: string): string {
-  const doc = vscode.workspace.textDocuments.find(
-   d => d.fileName === file
-  );
+  const doc = vscode.workspace.textDocuments.find(d => d.fileName === file);
   return doc ? doc.getText() : fs.readFileSync(file, 'utf-8');
  }
 

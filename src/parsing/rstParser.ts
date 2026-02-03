@@ -1,14 +1,24 @@
 import { RstVariable } from '../variables/variableTypes';
 
-const VAR_TEXT = /^\s*\.\.\s+\|(.+?)\|\s+replace::\s+(.+)$/gm;
-const VAR_IMAGE = /^\s*\.\.\s+\|(.+?)\|\s+\.\.\s+image::\s+(.+)$/gm;
+const VAR_TEXT = /^\s*\.\.\s+\|([^|]+)\|\s+replace::\s+(.+)$/gm;
 
-export function extractVariables(text: string, file: string): Map<string, RstVariable> {
+// ✅ два варианта image переменных:
+// 1) ".. |img| .. image:: PATH"
+// 2) ".. |img| image:: PATH"
+const VAR_IMAGE =
+ /^\s*\.\.\s+\|([^|]+)\|\s+(?:\.\.\s+)?image::\s+(.+)\s*$/gm;
+
+export function extractVariables(
+ text: string,
+ file: string
+): Map<string, RstVariable> {
  const vars = new Map<string, RstVariable>();
 
- let m;
+ let m: RegExpExecArray | null;
 
- // Текстовые
+ // ────────────────
+ // TEXT VARIABLES
+ // ────────────────
  while ((m = VAR_TEXT.exec(text)) !== null) {
   vars.set(m[1], {
    name: m[1],
@@ -18,13 +28,15 @@ export function extractVariables(text: string, file: string): Map<string, RstVar
   });
  }
 
- // Картинки
+ // ────────────────
+ // IMAGE VARIABLES
+ // ────────────────
  while ((m = VAR_IMAGE.exec(text)) !== null) {
   vars.set(m[1], {
    name: m[1],
    kind: 'image',
    source: file,
-   imagePath: m[2].trim()
+   imagePath: (m[2] ?? '').trim()
   });
  }
 
