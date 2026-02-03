@@ -13,6 +13,7 @@ import { registerIncludeSnippetDiagnosticsProvider } from './providers/includeSn
 import { registerOpenIncludeAtMarkerCommand } from './includes/openIncludeAtMarkerCommand';
 import { registerIncludeSnippetLinkProvider } from './providers/includeSnippetLinkProvider';
 
+
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
  
