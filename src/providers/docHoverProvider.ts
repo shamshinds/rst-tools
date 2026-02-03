@@ -71,6 +71,43 @@ function normalizeDocTarget(raw: string): string {
  return p;
 }
 
+/**
+ * Заголовок документа: первая строка вида
+ * Title
+ * =====
+ * или
+ * Title
+ * -----
+ */
+function readRstTitle(filePath: string): string | null {
+ try {
+  const text = fs.readFileSync(filePath, 'utf-8');
+  const lines = text.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length - 1; i++) {
+   const title = lines[i].trim();
+   const underline = lines[i + 1].trim();
+
+   if (!title) continue;
+   if (!underline) continue;
+
+   // underline должен быть >= длины title и состоять из одного символа
+   if (underline.length < title.length) continue;
+
+   const ch = underline[0];
+   if (!'=-~^"\'`:+#*'.includes(ch)) continue;
+
+   if ([...underline].every(c => c === ch)) {
+    return title;
+   }
+  }
+
+  return null;
+ } catch {
+  return null;
+ }
+}
+
 /* ======================= provider ======================= */
 
 export function registerDocHoverProvider(context: vscode.ExtensionContext) {
@@ -114,11 +151,16 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
      }
 
      const full = path.resolve(project.root, relPath);
+     const exists = fs.existsSync(full);
 
      const md = new vscode.MarkdownString();
      md.appendMarkdown(`**doc →** \`${projectId}:${relPath}\`\n\n`);
 
-     if (fs.existsSync(full)) {
+     if (exists) {
+      const title = readRstTitle(full);
+      if (title) {
+       md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
+      }
       md.appendMarkdown(`Путь: \`${full}\``);
      } else {
       md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
@@ -130,11 +172,16 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
     /* ----------------------- LOCAL ------------------------ */
 
     const full = path.resolve(path.dirname(doc.fileName), link);
+    const exists = fs.existsSync(full);
 
     const md = new vscode.MarkdownString();
     md.appendMarkdown(`**doc →** \`${link}\`\n\n`);
 
-    if (fs.existsSync(full)) {
+    if (exists) {
+     const title = readRstTitle(full);
+     if (title) {
+      md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
+     }
      md.appendMarkdown(`Путь: \`${full}\``);
     } else {
      md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
