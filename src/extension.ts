@@ -7,14 +7,16 @@ import { registerDocCompletionProvider } from './providers/docCompletionProvider
 import { registerDocDiagnosticsProvider } from './providers/docDiagnosticsProvider';
 import { registerDocDefinitionProvider } from './providers/docDefinitionProvider';
 import { registerImagePreviewCommand } from './images/previewCommand';
-import { startThumbCleanupScheduler } from './images/cleanupScheduler';
 import { registerDocHoverProvider } from './providers/docHoverProvider';
+import { registerIncludeSnippetHoverProvider } from './providers/includeSnippetHoverProvider';
+import { registerIncludeSnippetDiagnosticsProvider } from './providers/includeSnippetDiagnosticsProvider';
+import { registerOpenIncludeAtMarkerCommand } from './includes/openIncludeAtMarkerCommand';
+import { registerIncludeSnippetLinkProvider } from './providers/includeSnippetLinkProvider';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
  
  registerImagePreviewCommand(context);
- startThumbCleanupScheduler();
 
  registerCompletionProvider(context);
  registerHoverProvider(context);
@@ -25,7 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
  registerDocDiagnosticsProvider(context);
  registerDocDefinitionProvider(context);
  registerDocHoverProvider(context);
- 
+
+ registerIncludeSnippetHoverProvider(context);
+ registerIncludeSnippetDiagnosticsProvider(context);
+ registerOpenIncludeAtMarkerCommand(context);
+ registerIncludeSnippetLinkProvider(context);
+
 }
 
 export function deactivate() { }

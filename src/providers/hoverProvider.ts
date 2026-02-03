@@ -2,16 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 import { indexVariables } from '../variables/variableIndex';
-import { ensureThumb } from '../images/thumbnailCache';
 import { OPEN_IMAGE_CMD } from '../images/previewCommand';
-
-function escapeForMarkdownCode(s: string): string {
- // ВАЖНО: в markdown "\_" воспринимается как escape,
- // поэтому визуально пропадает "\".
- // Внутри `code` это почти не нужно, но VS Code иногда смешивает режимы,
- // поэтому экранируем явно.
- return s.replace(/\\/g, '\\\\');
-}
 
 export function registerHoverProvider(
  context: vscode.ExtensionContext
@@ -20,6 +11,7 @@ export function registerHoverProvider(
   { scheme: 'file', language: 'restructuredtext' },
   {
    async provideHover(doc, pos) {
+
     const range = doc.getWordRangeAtPosition(pos, /\|[^|]+\|/);
     if (!range) return;
 
@@ -31,9 +23,7 @@ export function registerHoverProvider(
      return new vscode.Hover(`❌ Переменная **${name}** не найдена`);
     }
 
-    /* =======================================================
-     * TEXT VARIABLES — MarkdownString (фикс отображения путей)
-     * ======================================================= */
+    // TEXT
     if (variable.kind === 'text') {
      const md = new vscode.MarkdownString();
      md.appendMarkdown(`**${name}**\n\n`);
@@ -41,14 +31,10 @@ export function registerHoverProvider(
      md.appendMarkdown(`${variable.value ?? ''}\n`);
      md.appendMarkdown('```\n\n');
      md.appendMarkdown(`Источник: \`${variable.source}\``);
-
      return new vscode.Hover(md);
     }
 
-
-    /* =======================================================
-     * IMAGE VARIABLES — миниатюра + кнопка "Открыть"
-     * ======================================================= */
+    // IMAGE
     if (variable.kind === 'image' && variable.imagePath) {
      const md = new vscode.MarkdownString();
      md.isTrusted = true;
@@ -56,22 +42,27 @@ export function registerHoverProvider(
      md.appendMarkdown(`**${name}** — изображение\n\n`);
 
      if (fs.existsSync(variable.imagePath)) {
-      const thumbPath = await ensureThumb(variable.imagePath);
-      const thumbUri = vscode.Uri.file(thumbPath);
+      const uri = vscode.Uri.file(variable.imagePath);
+
+      // миниатюра = оригинал, но отображаем уменьшенно
+      md.appendMarkdown(
+       `<img src="${uri.toString()}" ` +
+       `style="max-width:360px; max-height:240px; object-fit:contain;` +
+       `border-radius:6px; border:1px solid rgba(120,120,120,.25);" />\n\n`
+      );
 
       const fullArg = JSON.stringify(variable.imagePath);
 
       md.appendMarkdown(
-       `![thumbnail](${thumbUri.toString()})\n\n` +
        `[Открыть полноразмерное изображение](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
       );
      } else {
       md.appendMarkdown(
-       `_Файл изображения не найден_\n\n\`${escapeForMarkdownCode(variable.imagePath)}\`\n\n`
+       `❌ Файл изображения не найден \n\n\`${variable.imagePath}\`\n\n`
       );
      }
 
-     md.appendMarkdown(`Источник: \`${escapeForMarkdownCode(variable.source)}\``);
+     md.appendMarkdown(`Источник: \`${variable.source}\``);
      return new vscode.Hover(md);
     }
 
