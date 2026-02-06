@@ -12,7 +12,7 @@ import { registerIncludeSnippetHoverProvider } from './providers/includeSnippetH
 import { registerIncludeSnippetDiagnosticsProvider } from './providers/includeSnippetDiagnosticsProvider';
 import { registerOpenIncludeAtMarkerCommand } from './includes/openIncludeAtMarkerCommand';
 import { registerIncludeSnippetLinkProvider } from './providers/includeSnippetLinkProvider';
-
+import { registerIncludeDefinitionProvider } from './providers/includeDefinitionProvider';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -33,6 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
  registerIncludeSnippetDiagnosticsProvider(context);
  registerOpenIncludeAtMarkerCommand(context);
  registerIncludeSnippetLinkProvider(context);
+ registerIncludeDefinitionProvider(context);
 
 }
 

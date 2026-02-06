@@ -26,11 +26,11 @@ export function registerHoverProvider(
     // TEXT
     if (variable.kind === 'text') {
      const md = new vscode.MarkdownString();
-     md.appendMarkdown(`**${name}**\n\n`);
+     //md.appendMarkdown(`**${name}**\n\n`);
      md.appendMarkdown('```text\n');
      md.appendMarkdown(`${variable.value ?? ''}\n`);
      md.appendMarkdown('```\n\n');
-     md.appendMarkdown(`Источник: \`${variable.source}\``);
+     md.appendMarkdown(`**Источник**: \`${variable.source}\``);
      return new vscode.Hover(md);
     }
 
@@ -40,6 +40,7 @@ export function registerHoverProvider(
      md.isTrusted = true;
 
      md.appendMarkdown(`**${name}** — изображение\n\n`);
+     md.appendMarkdown(`**Источник**: \`${variable.source}\``);
 
      if (fs.existsSync(variable.imagePath)) {
       const uri = vscode.Uri.file(variable.imagePath);
@@ -54,7 +55,7 @@ export function registerHoverProvider(
       const fullArg = JSON.stringify(variable.imagePath);
 
       md.appendMarkdown(
-       `[Открыть полноразмерное изображение](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
+       `[Открыть изображение в новой вкладке](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
       );
      } else {
       md.appendMarkdown(
@@ -62,7 +63,6 @@ export function registerHoverProvider(
       );
      }
 
-     md.appendMarkdown(`Источник: \`${variable.source}\``);
      return new vscode.Hover(md);
     }
 

@@ -1,43 +1,9 @@
-// src/providers/includeSnippetLinkProvider.ts
-// FIX: marker берём не из парсера, а напрямую из документа, от строки include до первой НЕ-параметр строки
-
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 import { findConfPy } from '../project/projectResolver';
 import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
 import { OPEN_INCLUDE_AT_MARKER_CMD } from '../includes/openIncludeAtMarkerCommand';
-
-function findIncludeRange(
- doc: vscode.TextDocument,
- includePathRaw: string
-): vscode.Range | null {
- const wanted = includePathRaw.trim();
-
- for (let lineNo = 0; lineNo < doc.lineCount; lineNo++) {
-  const line = doc.lineAt(lineNo).text;
-
-  const inc = line.indexOf('include::');
-  if (inc === -1) continue;
-
-  const after = line.slice(inc + 'include::'.length).trim();
-  if (!after) continue;
-
-  if (after !== wanted) continue;
-
-  const startChar = line.indexOf(after, inc);
-  if (startChar === -1) continue;
-
-  const endChar = startChar + after.length;
-
-  return new vscode.Range(
-   new vscode.Position(lineNo, startChar),
-   new vscode.Position(lineNo, endChar)
-  );
- }
-
- return null;
-}
 
 function extractMarkerFromFollowingParamLines(
  doc: vscode.TextDocument,
@@ -67,7 +33,10 @@ export function registerIncludeSnippetLinkProvider(
   { scheme: 'file', language: 'restructuredtext' },
   {
    provideDocumentLinks(doc) {
-    console.log('[INCLUDE LINK] provideDocumentLinks called for', doc.fileName);
+    console.log(
+     '[INCLUDE LINK] provideDocumentLinks called for',
+     doc.fileName
+    );
 
     const confPy = findConfPy(doc.fileName);
     if (!confPy) {
@@ -75,23 +44,27 @@ export function registerIncludeSnippetLinkProvider(
      return [];
     }
 
-    const snippets = parseIncludeSnippets(doc.getText(), doc.fileName, confPy);
+    const snippets = parseIncludeSnippets(
+     doc.getText(),
+     doc.fileName,
+     confPy
+    );
 
     console.log('[INCLUDE LINK] snippets found =', snippets.length);
 
     const links: vscode.DocumentLink[] = [];
 
     for (const s of snippets) {
-     const includeRange = findIncludeRange(doc, s.includePathRaw);
-     if (!includeRange) {
-      console.log('[INCLUDE LINK] include range not found for', s.includePathRaw);
-      continue;
-     }
+     const includeRange = new vscode.Range(
+      new vscode.Position(s.line, s.columnStart),
+      new vscode.Position(s.line, s.columnEnd)
+     );
 
-     const includeLineNo = includeRange.start.line;
-
-     // ✅ marker берём напрямую из файла
-     const marker = extractMarkerFromFollowingParamLines(doc, includeLineNo);
+     // marker читаем из документа (реальное состояние)
+     const marker = extractMarkerFromFollowingParamLines(
+      doc,
+      s.line
+     );
 
      const payloadObj = {
       file: s.includeFileAbs,
@@ -105,17 +78,21 @@ export function registerIncludeSnippetLinkProvider(
       `command:${OPEN_INCLUDE_AT_MARKER_CMD}?${payload}`
      );
 
-     const link = new vscode.DocumentLink(includeRange, cmdUri);
+     
 
-     link.tooltip =
-      `Open include: ${s.includeFileAbs}` +
-      (marker ? `\nstart-after: ${marker}` : '');
+     if (fs.existsSync(s.includeFileAbs)) {
+      const link = new vscode.DocumentLink(includeRange, cmdUri);
+      link.tooltip = `Чтобы открыть файл, нажмите на путь к нему с зажатой клавишей Ctrl (Cmd)`;
+      //`Open include: ${s.includeFileAbs}` +
+      //(marker ? `\nstart-after: ${marker}` : '');
+      links.push(link);
+     } 
 
-     if (!fs.existsSync(s.includeFileAbs)) {
-      link.tooltip = `❌ Файл не найден: ${s.includeFileAbs}`;
-     }
+     //if (!fs.existsSync(s.includeFileAbs)) {
+      //link.tooltip = `❌ Файл не найден: ${s.includeFileAbs}`;
+     //}
 
-     links.push(link);
+     //links.push(link);
     }
 
     return links;

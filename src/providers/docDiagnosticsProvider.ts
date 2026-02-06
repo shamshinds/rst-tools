@@ -99,7 +99,7 @@ export function registerDocDiagnosticsProvider(
      diagnostics.push(
       new vscode.Diagnostic(
        range,
-       `Проект '${projectId}' не подключён через intersphinx_mapping`,
+       `❌ Проект "${projectId}" не подключен через intersphinx_mapping`,
        vscode.DiagnosticSeverity.Error
       )
      );
@@ -111,7 +111,7 @@ export function registerDocDiagnosticsProvider(
      diagnostics.push(
       new vscode.Diagnostic(
        range,
-       `Файл не найден: ${projectId}:${relPath}`,
+       `❌ Файл не найден: ${projectId}:${relPath}`,
        vscode.DiagnosticSeverity.Error
       )
      );
@@ -130,7 +130,7 @@ export function registerDocDiagnosticsProvider(
     diagnostics.push(
      new vscode.Diagnostic(
       range,
-      `Файл не найден: ${link}`,
+      `❌ Файл не найден: ${target}`,
       vscode.DiagnosticSeverity.Error
      )
     );
