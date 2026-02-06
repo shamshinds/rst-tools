@@ -82,3 +82,4 @@ export function registerDiagnosticsProvider(
  // ✅ Дополнительный прогон после старта (когда всё успело проиндексироваться)
  setTimeout(() => validateActiveEditor(), 300);
 }
+ 

@@ -7,8 +7,10 @@ export interface IncludeSnippetRef {
  startAfter?: string;
  endBefore?: string;
 
- rangeStartOffset: number;
- rangeEndOffset: number;
+ // ⬇️ ВАЖНО: координаты
+ line: number;
+ columnStart: number;
+ columnEnd: number;
 }
 
 export function parseIncludeSnippets(
@@ -18,36 +20,48 @@ export function parseIncludeSnippets(
 ): IncludeSnippetRef[] {
  const result: IncludeSnippetRef[] = [];
 
- // include:: <path>
- //   :start-after: ...
- //   :end-before: ...
- const re =
-  /^\s*\.\.\s+include::\s+([^\r\n]+)\s*(?:\r?\n((?:[ \t]+:[^\r\n]*\r?\n?)*))?/gm;
+ const lines = text.split(/\r?\n/);
 
- let m: RegExpExecArray | null;
+ for (let lineNo = 0; lineNo < lines.length; lineNo++) {
+  const line = lines[lineNo];
 
- while ((m = re.exec(text)) !== null) {
-  const includePathRaw = (m[1] ?? '').trim();
-  const paramsBlock = m[2] ?? '';
+  const m = /^\s*\.\.\s+include::\s+(.+)$/.exec(line);
+  if (!m) continue;
 
-  const sa = /:start-after:\s*([^\r\n]+)\s*$/m.exec(paramsBlock);
-  const eb = /:end-before:\s*([^\r\n]+)\s*$/m.exec(paramsBlock);
+  const includePathRaw = m[1].trim();
 
-  const startAfter = sa ? (sa[1] ?? '').trim() : undefined;
-  const endBefore = eb ? (eb[1] ?? '').trim() : undefined;
+  let startAfter: string | undefined;
+  let endBefore: string | undefined;
 
-  // ✅ FIX: include path может быть относительным или от conf.py
-  const includeFileAbs = resolveRstPath(includePathRaw, docFilePath, confPath);
+  // параметры include
+  for (let i = lineNo + 1; i < lines.length; i++) {
+   const l = lines[i];
+   if (!/^[ \t]+:/.test(l)) break;
 
-  const blockText = m[0];
+   const sa = /:start-after:\s*(.+)$/.exec(l);
+   if (sa) startAfter = sa[1].trim();
+
+   const eb = /:end-before:\s*(.+)$/.exec(l);
+   if (eb) endBefore = eb[1].trim();
+  }
+
+  const includeFileAbs = resolveRstPath(
+   includePathRaw,
+   docFilePath,
+   confPath
+  );
+
+  const columnStart = line.indexOf(includePathRaw);
+  const columnEnd = columnStart + includePathRaw.length;
 
   result.push({
    includePathRaw,
    includeFileAbs,
    startAfter,
    endBefore,
-   rangeStartOffset: m.index,
-   rangeEndOffset: m.index + blockText.length
+   line: lineNo,
+   columnStart,
+   columnEnd
   });
  }
 

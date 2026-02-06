@@ -133,38 +133,40 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
      const confPy = findConfPy(doc.fileName);
      if (!confPy) return;
 
-     const allowed = parseIntersphinxMapping(confPy);
-     if (!allowed.has(projectId)) {
-      return new vscode.Hover(
-       `❌ Проект **${projectId}** не подключён через intersphinx_mapping`
-      );
-     }
+     //const allowed = parseIntersphinxMapping(confPy);
+     //if (!allowed.has(projectId)) {
+      //return new vscode.Hover(
+       //`❌ Проект **${projectId}** не подключен через intersphinx_mapping`
+      //);
+     //}
 
      if (!workspaceRoot) return;
 
      const projects = discoverProjects(workspaceRoot);
      const project = projects.find(p => p.id === projectId);
-     if (!project) {
-      return new vscode.Hover(
-       `❌ Проект **${projectId}** не найден в workspace`
-      );
-     }
-
+     if (!project) return;
      const full = path.resolve(project.root, relPath);
+     //if (!project) {
+      //return new vscode.Hover(
+       //`❌ Проект **${projectId}** не найден в workspace`
+      //);
+     //}
+
+     
      const exists = fs.existsSync(full);
 
      const md = new vscode.MarkdownString();
-     md.appendMarkdown(`**doc →** \`${projectId}:${relPath}\`\n\n`);
+     //md.appendMarkdown(`**doc →** \`${projectId}:${relPath}\`\n\n`);
 
      if (exists) {
       const title = readRstTitle(full);
       if (title) {
        md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
       }
-      md.appendMarkdown(`Путь: \`${full}\``);
-     } else {
-      md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
-     }
+      md.appendMarkdown(`**Путь к файлу**: \`${full}\``);
+     } //else {
+      //md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
+     //}
 
      return new vscode.Hover(md);
     }
@@ -175,17 +177,17 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
     const exists = fs.existsSync(full);
 
     const md = new vscode.MarkdownString();
-    md.appendMarkdown(`**doc →** \`${link}\`\n\n`);
 
     if (exists) {
      const title = readRstTitle(full);
      if (title) {
-      md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
+      //md.appendMarkdown(`**doc →** \`${link}\`\n\n`);
+      md.appendMarkdown(`**Заголовок**: ${title}\n\n`);
      }
-     md.appendMarkdown(`Путь: \`${full}\``);
-    } else {
-     md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
-    }
+     md.appendMarkdown(`**Путь к файлу**: \`${full}\``);
+    } //else {
+     //md.appendMarkdown(`❌ Файл не найден\n\nПуть: \`${full}\``);
+    //}
 
     return new vscode.Hover(md);
    }

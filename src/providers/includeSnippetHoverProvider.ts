@@ -1,32 +1,10 @@
+// src/providers/includeSnippetHoverProvider.ts
+
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 import { findConfPy } from '../project/projectResolver';
 import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
-
-function getIncludePathRangeOnLine(
- document: vscode.TextDocument,
- position: vscode.Position
-): vscode.Range | null {
- const lineText = document.lineAt(position.line).text;
-
- const idx = lineText.indexOf('include::');
- if (idx === -1) return null;
-
- const after = lineText.slice(idx + 'include::'.length);
- const raw = after.trim();
- if (!raw) return null;
-
- const startChar = lineText.indexOf(raw, idx);
- if (startChar === -1) return null;
-
- const endChar = startChar + raw.length;
-
- return new vscode.Range(
-  new vscode.Position(position.line, startChar),
-  new vscode.Position(position.line, endChar)
- );
-}
 
 export function registerIncludeSnippetHoverProvider(
  context: vscode.ExtensionContext
@@ -36,37 +14,59 @@ export function registerIncludeSnippetHoverProvider(
   {
    provideHover(doc, pos) {
     const confPy = findConfPy(doc.fileName);
-    if (!confPy) return;
-
-    const range = getIncludePathRangeOnLine(doc, pos);
-    if (!range) return;
-
-    if (!range.contains(pos)) return;
-
-    const offset = doc.offsetAt(pos);
-
-    const snippets = parseIncludeSnippets(doc.getText(), doc.fileName, confPy);
-    const hit = snippets.find(
-     s => offset >= s.rangeStartOffset && offset <= s.rangeEndOffset
-    );
-    if (!hit) return;
-
-    const md = new vscode.MarkdownString();
-    md.isTrusted = true;
-
-    md.appendMarkdown(`**include** → \`${hit.includePathRaw}\`\n\n`);
-    md.appendMarkdown(`**Файл:** \`${hit.includeFileAbs}\`\n\n`);
-
-    if (!fs.existsSync(hit.includeFileAbs)) {
-     md.appendMarkdown(`❌ Файл не найден\n\n`);
-    } else {
-     md.appendMarkdown(`✅ Файл найден\n\n`);
+    if (!confPy) {
+     return;
     }
 
-    if (hit.startAfter) md.appendMarkdown(`**start-after:** \`${hit.startAfter}\`\n\n`);
-    if (hit.endBefore) md.appendMarkdown(`**end-before:** \`${hit.endBefore}\`\n\n`);
+    const snippets = parseIncludeSnippets(
+     doc.getText(),
+     doc.fileName,
+     confPy
+    );
 
-    return new vscode.Hover(md, range);
+    for (const s of snippets) {
+     // Диапазон ТОЛЬКО пути include::
+     const range = new vscode.Range(
+      new vscode.Position(s.line, s.columnStart),
+      new vscode.Position(s.line, s.columnEnd)
+     );
+
+     // Hover только если курсор внутри пути
+     if (!range.contains(pos)) {
+      continue;
+     }
+     
+     const md = new vscode.MarkdownString();
+     md.isTrusted = true;
+
+     if (fs.existsSync(s.includeFileAbs)) {
+      //md.appendMarkdown(`**Include snippet**\n\n`);
+      md.appendMarkdown(`**Путь к файлу**: \n\`${s.includeFileAbs} ✅\`\n\n`);
+
+      if (s.startAfter) {
+       md.appendMarkdown(
+        `**Начало фрагмента**: \`${s.startAfter}\`\n\n`
+       );
+      }
+
+      if (s.endBefore) {
+       md.appendMarkdown(
+        `**Конец фрагмента**: \`${s.endBefore}\`\n\n`
+       );
+      }
+
+      //if (!fs.existsSync(s.includeFileAbs)) {
+      //md.appendMarkdown(
+      //`❌ Файл не найден`
+      //);
+      //}
+
+     }
+     
+     return new vscode.Hover(md, range);
+    }
+
+    return;
    }
   }
  );
