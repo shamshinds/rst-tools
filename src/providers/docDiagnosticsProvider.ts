@@ -15,34 +15,22 @@ function getWorkspaceRoot(doc: vscode.TextDocument): string | null {
  return folder ? folder.uri.fsPath : null;
 }
 
-function resolveWorkspaceRootFromFile(filePath: string): string | null {
- let dir = path.dirname(filePath);
 
- while (true) {
-  const candidate = path.join(dir, 'source', 'ru', 'ru');
-  if (fs.existsSync(candidate)) {
-   return dir;
-  }
-
-  const parent = path.dirname(dir);
-  if (parent === dir) break;
-  dir = parent;
- }
-
- return null;
-}
-
+/**
+ * :doc:`text <path>` → path
+ * :doc:`path` → path
+ * + добавляет .rst если нужно
+ */
 function normalizeDocTarget(raw: string): string {
  let p = raw.trim();
 
- // :doc:`text <path>`
  const lt = p.lastIndexOf('<');
  const gt = p.lastIndexOf('>');
  if (lt !== -1 && gt !== -1 && gt > lt) {
   p = p.slice(lt + 1, gt).trim();
  }
 
- if (p && !p.endsWith('.rst') && !p.endsWith('/')) {
+ if (!p.endsWith('.rst')) {
   p += '.rst';
  }
 
@@ -62,10 +50,10 @@ export function registerDocDiagnosticsProvider(
  function validate(doc: vscode.TextDocument) {
   if (doc.languageId !== 'restructuredtext') return;
 
-  const workspaceRoot =
-   getWorkspaceRoot(doc) ??
-   resolveWorkspaceRootFromFile(doc.fileName);
+  const workspaceRoot = getWorkspaceRoot(doc);
   if (!workspaceRoot) return;
+
+  const projects = discoverProjects(workspaceRoot);
 
   const diagnostics: vscode.Diagnostic[] = [];
   const text = doc.getText();
@@ -73,29 +61,68 @@ export function registerDocDiagnosticsProvider(
   let match: RegExpExecArray | null;
 
   while ((match = DOC_LINK_REGEX.exec(text)) !== null) {
-   const inside = match[1];
+   const rawInside = match[1];
    const start = doc.positionAt(match.index + 6);
-   const end = doc.positionAt(match.index + 6 + inside.length);
+   const end = doc.positionAt(match.index + 6 + rawInside.length);
    const range = new vscode.Range(start, end);
 
-   const link = normalizeDocTarget(inside);
-   if (!link) continue;
+   const normalized = normalizeDocTarget(rawInside);
+   if (!normalized) continue;
 
-   // external
-   if (link.includes(':')) {
-    const [projectId, relPath] = link.split(':', 2);
+   /* -------------------- EXTERNAL PROJECT -------------------- */
+
+   if (normalized.includes(':')) {
+    const [projectId, relPath] = normalized.split(':', 2);
 
     const confPy = findConfPy(doc.fileName);
     if (!confPy) continue;
 
     const allowed = parseIntersphinxMapping(confPy);
-    const projects = discoverProjects(workspaceRoot);
 
-    const project = projects.find(
-     p => p.id === projectId && allowed.has(p.id)
+    console.log('\n[RST DOC] ===== DOC LINK CHECK =====');
+    console.log('[RST DOC] raw inside =', rawInside);
+    console.log('[RST DOC] normalized =', normalized);
+    console.log('[RST DOC] projectId =', projectId);
+    console.log('[RST DOC] relPath =', relPath);
+    console.log('[RST DOC] conf.py =', confPy);
+    console.log(
+     '[RST DOC] allowed intersphinx projects =',
+     Array.from(allowed)
     );
 
-    if (!project) {
+    // поднимаемся от conf.py до корня workspace
+    let workspaceRoot = path.dirname(confPy);
+
+    while (true) {
+     const candidate = path.join(workspaceRoot, 'source', 'ru', 'ru');
+     if (fs.existsSync(candidate)) {
+      break;
+     }
+
+     const parent = path.dirname(workspaceRoot);
+     if (parent === workspaceRoot) {
+      console.log('[RST DOC] ❌ workspace root not found');
+      return;
+     }
+
+     workspaceRoot = parent;
+    }
+
+    console.log('[RST DOC] FIXED workspaceRoot =', workspaceRoot);
+
+    const projects = discoverProjects(workspaceRoot);
+
+    console.log('[RST DOC] projectsRoot =', workspaceRoot);
+    console.log(
+     '[RST DOC] discovered projects =',
+     projects.map(p => ({
+      id: p.id,
+      root: p.root
+     }))
+    );
+
+
+    if (!allowed.has(projectId)) {
      diagnostics.push(
       new vscode.Diagnostic(
        range,
@@ -105,6 +132,26 @@ export function registerDocDiagnosticsProvider(
      );
      continue;
     }
+
+    for (const p of projects) {
+     console.log(
+      `[RST DOC] compare "${projectId}" === "${p.id}" →`,
+      projectId === p.id
+     );
+    }
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+     diagnostics.push(
+      new vscode.Diagnostic(
+       range,
+       `❌ Проект "${projectId}" не найден в source/ru/ru`,
+       vscode.DiagnosticSeverity.Error
+      )
+     );
+     continue;
+    }
+
 
     const target = path.resolve(project.root, relPath);
     if (!fs.existsSync(target)) {
@@ -120,17 +167,18 @@ export function registerDocDiagnosticsProvider(
     continue;
    }
 
-   // local
+   /* ---------------------- LOCAL PROJECT ---------------------- */
+
    const target = path.resolve(
     path.dirname(doc.fileName),
-    link
+    normalized
    );
 
    if (!fs.existsSync(target)) {
     diagnostics.push(
      new vscode.Diagnostic(
       range,
-      `❌ Файл не найден: ${target}`,
+      `❌ Файл не найден: ${normalized}`,
       vscode.DiagnosticSeverity.Error
      )
     );
@@ -145,18 +193,20 @@ export function registerDocDiagnosticsProvider(
   if (doc) validate(doc);
  }
 
- // ✅ Валидация всех открытых документов при активации
+ // первичная валидация
  vscode.workspace.textDocuments.forEach(validate);
 
  context.subscriptions.push(
   vscode.workspace.onDidOpenTextDocument(validate),
   vscode.workspace.onDidChangeTextDocument(e => validate(e.document)),
-  vscode.workspace.onDidCloseTextDocument(doc => collection.delete(doc.uri)),
-
-  // ✅ Валидация при переключении активного редактора
-  vscode.window.onDidChangeActiveTextEditor(() => validateActiveEditor())
+  vscode.workspace.onDidCloseTextDocument(doc =>
+   collection.delete(doc.uri)
+  ),
+  vscode.window.onDidChangeActiveTextEditor(() =>
+   validateActiveEditor()
+  )
  );
 
- // ✅ Прогон после старта (на случай асинхронных индексов)
+ // повторная проверка после старта
  setTimeout(() => validateActiveEditor(), 300);
 }

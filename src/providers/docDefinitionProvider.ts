@@ -1,77 +1,126 @@
+// src/providers/docDefinitionProvider.ts
+
 import * as vscode from 'vscode';
-import { parseDocLinks } from '../doc/docParser';
-import { resolveDocTarget, parseIntersphinxMapping } from '../doc/docResolver';
-import { discoverProjects } from '../doc/projectRegistry';
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { findConfPy } from '../project/projectResolver';
+import { parseIntersphinxMapping } from '../doc/docResolver';
+import { discoverProjects } from '../doc/projectRegistry';
+
+/**
+ * :doc:`...`
+ */
+const DOC_LINK_RE = /:doc:`([^`]+)`/g;
+
+function resolveWorkspaceRootFromFile(filePath: string): string | null {
+ let dir = path.dirname(filePath);
+
+ while (true) {
+  const candidate = path.join(dir, 'source', 'ru', 'ru');
+  if (fs.existsSync(candidate)) {
+   return dir;
+  }
+
+  const parent = path.dirname(dir);
+  if (parent === dir) {
+   break;
+  }
+  dir = parent;
+ }
+
+ return null;
+}
 
 export function registerDocDefinitionProvider(
  context: vscode.ExtensionContext
 ) {
- console.log('[RST DOC] register definition provider');
  const provider = vscode.languages.registerDefinitionProvider(
-  [
-   { language: 'restructuredtext' },
-   { language: 'rst' }
-  ],
+  { scheme: 'file', language: 'restructuredtext' },
   {
-   async provideDefinition(
-    document: vscode.TextDocument,
-    position: vscode.Position
-   ): Promise<vscode.Definition | null> {
+   provideDefinition(doc, pos) {
+    const text = doc.getText();
+    let match: RegExpExecArray | null;
 
-    console.log('[RST DOC] provideDefinition called');
+    while ((match = DOC_LINK_RE.exec(text)) !== null) {
+     const raw = match[1];
 
-    const text = document.getText();
-    const offset = document.offsetAt(position);
+     const linkStart = match.index + 6; // длина ':doc:`'
+     const linkEnd = linkStart + raw.length;
 
-    const links = parseDocLinks(text);
-    const link = links.find(
-     l => offset >= l.rangeStart && offset <= l.rangeEnd
-    );
+     const range = new vscode.Range(
+      doc.positionAt(linkStart),
+      doc.positionAt(linkEnd)
+     );
 
-    if (!link) {
-     return null;
+     // курсор должен быть внутри ссылки
+     if (!range.contains(pos)) {
+      continue;
+     }
+
+     const workspaceRoot =
+      vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath ??
+      resolveWorkspaceRootFromFile(doc.fileName);
+
+     if (!workspaceRoot) {
+      return null;
+     }
+
+     /* ------------------ межпроектная ссылка ------------------ */
+
+     if (raw.includes(':')) {
+      const [projectId, rel] = raw.split(':', 2);
+
+      const conf = findConfPy(doc.fileName);
+      if (!conf) {
+       return null;
+      }
+
+      const allowed = parseIntersphinxMapping(conf);
+      const projects = discoverProjects(workspaceRoot);
+
+      const project = projects.find(
+       p => p.id === projectId && allowed.has(p.id)
+      );
+
+      if (!project) {
+       return null;
+      }
+
+      const target = path.join(
+       project.root,
+       rel.endsWith('.rst') ? rel : `${rel}.rst`
+      );
+
+      if (!fs.existsSync(target)) {
+       return null;
+      }
+
+      return new vscode.Location(
+       vscode.Uri.file(target),
+       new vscode.Position(0, 0)
+      );
+     }
+
+     /* -------------------- локальная ссылка ------------------- */
+
+     const baseDir = path.dirname(doc.fileName);
+     const target = path.join(
+      baseDir,
+      raw.endsWith('.rst') ? raw : `${raw}.rst`
+     );
+
+     if (!fs.existsSync(target)) {
+      return null;
+     }
+
+     return new vscode.Location(
+      vscode.Uri.file(target),
+      new vscode.Position(0, 0)
+     );
     }
 
-    const confPath = findConfPy(document.fileName);
-    if (!confPath) {
-     return null;
-    }
-
-    const allProjects = discoverProjects(
-     vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? ''
-    );
-
-    const currentProject = allProjects.find(p =>
-     document.fileName.startsWith(p.root)
-    );
-    if (!currentProject) {
-     return null;
-    }
-
-    const allowedProjects =
-     parseIntersphinxMapping(confPath);
-
-    const target = resolveDocTarget(
-     document.fileName,
-     currentProject,
-     allProjects,
-     allowedProjects,
-     link.target
-    );
-
-    if (!target.exists) {
-     return null;
-    }
-
-    const uri = vscode.Uri.file(target.filePath);
-    const targetDoc =
-     await vscode.workspace.openTextDocument(uri);
-
-    // Переходим в начало файла
-    const pos = new vscode.Position(0, 0);
-
-    return new vscode.Location(uri, pos);
+    return null;
    }
   }
  );

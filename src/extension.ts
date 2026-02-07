@@ -6,6 +6,7 @@ import { registerDefinitionProvider } from './providers/definitionProvider';
 import { registerDocCompletionProvider } from './providers/docCompletionProvider';
 import { registerDocDiagnosticsProvider } from './providers/docDiagnosticsProvider';
 import { registerDocDefinitionProvider } from './providers/docDefinitionProvider';
+import { registerDocLinkProvider } from './providers/docLinkProvider';
 import { registerImagePreviewCommand } from './images/previewCommand';
 import { registerDocHoverProvider } from './providers/docHoverProvider';
 import { registerIncludeSnippetHoverProvider } from './providers/includeSnippetHoverProvider';
@@ -28,6 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
  registerDocDiagnosticsProvider(context);
  registerDocDefinitionProvider(context);
  registerDocHoverProvider(context);
+ registerDocLinkProvider(context);
 
  registerIncludeSnippetHoverProvider(context);
  registerIncludeSnippetDiagnosticsProvider(context);
