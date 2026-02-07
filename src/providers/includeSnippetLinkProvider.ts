@@ -73,7 +73,10 @@ export function registerIncludeSnippetLinkProvider(
 
      console.log('[INCLUDE LINK] add link', payloadObj);
 
-     const payload = encodeURIComponent(JSON.stringify(payloadObj));
+     const payload = encodeURIComponent(
+      JSON.stringify([payloadObj])
+     );
+
      const cmdUri = vscode.Uri.parse(
       `command:${OPEN_INCLUDE_AT_MARKER_CMD}?${payload}`
      );
