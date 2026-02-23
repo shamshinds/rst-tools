@@ -41,7 +41,7 @@ export function registerIncludeSnippetHoverProvider(
 
      if (fs.existsSync(s.includeFileAbs)) {
       //md.appendMarkdown(`**Include snippet**\n\n`);
-      md.appendMarkdown(`**Путь к файлу**: \n\`${s.includeFileAbs} ✅\`\n\n`);
+      md.appendMarkdown(`**Путь к файлу**: ✅ \n\`${s.includeFileAbs}\`\n\n`);
 
       if (s.startAfter) {
        md.appendMarkdown(

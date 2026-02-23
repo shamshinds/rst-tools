@@ -71,6 +71,27 @@ function normalizeDocTarget(raw: string): string {
  return p;
 }
 
+function splitDocRole(raw: string): {
+ label: string;
+ target: string;
+} {
+ const lt = raw.lastIndexOf('<');
+ const gt = raw.lastIndexOf('>');
+
+ if (lt !== -1 && gt !== -1 && gt > lt) {
+  return {
+   label: raw.slice(0, lt).trim(),
+   target: raw.slice(lt + 1, gt).trim()
+  };
+ }
+
+ return {
+  label: raw.trim(),
+  target: raw.trim()
+ };
+}
+
+
 /**
  * Заголовок документа: первая строка вида
  * Title
@@ -119,7 +140,9 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
     if (!range) return;
 
     const raw = doc.getText(range);
-    const link = normalizeDocTarget(raw);
+    const { label, target } = splitDocRole(raw);
+    const link = normalizeDocTarget(target);
+
     if (!link) return;
 
     const workspaceRoot =
