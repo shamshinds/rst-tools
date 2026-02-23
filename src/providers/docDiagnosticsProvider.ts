@@ -15,19 +15,67 @@ function getWorkspaceRoot(doc: vscode.TextDocument): string | null {
  return folder ? folder.uri.fsPath : null;
 }
 
+function resolveWorkspaceRootFromFile(filePath: string): string | null {
+ let dir = path.dirname(filePath);
+
+ while (true) {
+  const candidate = path.join(dir, 'source', 'ru', 'ru');
+  if (fs.existsSync(candidate)) return dir;
+
+  const parent = path.dirname(dir);
+  if (parent === dir) break;
+  dir = parent;
+ }
+
+ return null;
+}
 
 /**
- * :doc:`text <path>` → path
- * :doc:`path` → path
- * + добавляет .rst если нужно
+ * Возвращает возможные пути для :doc:
  */
-function normalizeDocTarget(raw: string): string {
+function buildDocCandidates(raw: string): string[] {
  let p = raw.trim();
 
+ // :doc:`text <path>`
  const lt = p.lastIndexOf('<');
  const gt = p.lastIndexOf('>');
  if (lt !== -1 && gt !== -1 && gt > lt) {
   p = p.slice(lt + 1, gt).trim();
+ }
+
+ const candidates = new Set<string>();
+
+ if (p.endsWith('/')) {
+  candidates.add(path.join(p, 'index.rst'));
+ } else {
+  candidates.add(p + '.rst');
+  candidates.add(path.join(p, 'index.rst'));
+ }
+
+ return [...candidates];
+}
+
+/**
+ * Нормализует содержимое :doc:`...`
+ *
+ * :doc:`text <path>` → path
+ * :doc:`path` → path
+ * добавляет .rst если расширения нет
+ */
+function normalizeDocTarget(raw: string): string {
+ let p = raw.trim();
+
+ // :doc:`text <path>`
+ const lt = p.lastIndexOf('<');
+ const gt = p.lastIndexOf('>');
+ if (lt !== -1 && gt !== -1 && gt > lt) {
+  p = p.slice(lt + 1, gt).trim();
+ }
+
+ // убираем якорь (на будущее)
+ const hash = p.indexOf('#');
+ if (hash !== -1) {
+  p = p.slice(0, hash);
  }
 
  if (!p.endsWith('.rst')) {
@@ -50,10 +98,10 @@ export function registerDocDiagnosticsProvider(
  function validate(doc: vscode.TextDocument) {
   if (doc.languageId !== 'restructuredtext') return;
 
-  const workspaceRoot = getWorkspaceRoot(doc);
+  const workspaceRoot =
+   getWorkspaceRoot(doc) ??
+   resolveWorkspaceRootFromFile(doc.fileName);
   if (!workspaceRoot) return;
-
-  const projects = discoverProjects(workspaceRoot);
 
   const diagnostics: vscode.Diagnostic[] = [];
   const text = doc.getText();
@@ -62,6 +110,7 @@ export function registerDocDiagnosticsProvider(
 
   while ((match = DOC_LINK_REGEX.exec(text)) !== null) {
    const rawInside = match[1];
+
    const start = doc.positionAt(match.index + 6);
    const end = doc.positionAt(match.index + 6 + rawInside.length);
    const range = new vscode.Range(start, end);
@@ -69,8 +118,9 @@ export function registerDocDiagnosticsProvider(
    const normalized = normalizeDocTarget(rawInside);
    if (!normalized) continue;
 
-   /* -------------------- EXTERNAL PROJECT -------------------- */
-
+   // =========================================================
+   // EXTERNAL PROJECT DOC
+   // =========================================================
    if (normalized.includes(':')) {
     const [projectId, relPath] = normalized.split(':', 2);
 
@@ -78,49 +128,6 @@ export function registerDocDiagnosticsProvider(
     if (!confPy) continue;
 
     const allowed = parseIntersphinxMapping(confPy);
-
-    console.log('\n[RST DOC] ===== DOC LINK CHECK =====');
-    console.log('[RST DOC] raw inside =', rawInside);
-    console.log('[RST DOC] normalized =', normalized);
-    console.log('[RST DOC] projectId =', projectId);
-    console.log('[RST DOC] relPath =', relPath);
-    console.log('[RST DOC] conf.py =', confPy);
-    console.log(
-     '[RST DOC] allowed intersphinx projects =',
-     Array.from(allowed)
-    );
-
-    // поднимаемся от conf.py до корня workspace
-    let workspaceRoot = path.dirname(confPy);
-
-    while (true) {
-     const candidate = path.join(workspaceRoot, 'source', 'ru', 'ru');
-     if (fs.existsSync(candidate)) {
-      break;
-     }
-
-     const parent = path.dirname(workspaceRoot);
-     if (parent === workspaceRoot) {
-      console.log('[RST DOC] ❌ workspace root not found');
-      return;
-     }
-
-     workspaceRoot = parent;
-    }
-
-    console.log('[RST DOC] FIXED workspaceRoot =', workspaceRoot);
-
-    const projects = discoverProjects(workspaceRoot);
-
-    console.log('[RST DOC] projectsRoot =', workspaceRoot);
-    console.log(
-     '[RST DOC] discovered projects =',
-     projects.map(p => ({
-      id: p.id,
-      root: p.root
-     }))
-    );
-
 
     if (!allowed.has(projectId)) {
      diagnostics.push(
@@ -133,27 +140,27 @@ export function registerDocDiagnosticsProvider(
      continue;
     }
 
-    for (const p of projects) {
-     console.log(
-      `[RST DOC] compare "${projectId}" === "${p.id}" →`,
-      projectId === p.id
-     );
-    }
+    const workspaceRoot =
+     getWorkspaceRoot(doc) ??
+     resolveWorkspaceRootFromFile(doc.fileName);
+    if (!workspaceRoot) continue;
+
+    const projects = discoverProjects(workspaceRoot);
 
     const project = projects.find(p => p.id === projectId);
     if (!project) {
      diagnostics.push(
       new vscode.Diagnostic(
        range,
-       `❌ Проект "${projectId}" не найден в source/ru/ru`,
+       `❌ Проект "${projectId}" не найден в workspace`,
        vscode.DiagnosticSeverity.Error
       )
      );
      continue;
     }
 
-
     const target = path.resolve(project.root, relPath);
+
     if (!fs.existsSync(target)) {
      diagnostics.push(
       new vscode.Diagnostic(
@@ -164,17 +171,19 @@ export function registerDocDiagnosticsProvider(
      );
     }
 
+    // ⛔ ВАЖНО: НЕ ПРОВЕРЯЕМ КАК LOCAL
     continue;
    }
 
-   /* ---------------------- LOCAL PROJECT ---------------------- */
-
-   const target = path.resolve(
+   // =========================================================
+   // LOCAL DOC
+   // =========================================================
+   const localTarget = path.resolve(
     path.dirname(doc.fileName),
     normalized
    );
 
-   if (!fs.existsSync(target)) {
+   if (!fs.existsSync(localTarget)) {
     diagnostics.push(
      new vscode.Diagnostic(
       range,
@@ -193,7 +202,6 @@ export function registerDocDiagnosticsProvider(
   if (doc) validate(doc);
  }
 
- // первичная валидация
  vscode.workspace.textDocuments.forEach(validate);
 
  context.subscriptions.push(
@@ -207,6 +215,5 @@ export function registerDocDiagnosticsProvider(
   )
  );
 
- // повторная проверка после старта
  setTimeout(() => validateActiveEditor(), 300);
 }

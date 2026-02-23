@@ -1,11 +1,11 @@
 {
   "name": "rsttools",
   "displayName": "rst-tools",
-  "publisher": "dshamshin",
-  "description": "tools for restructuredtext",
-  "version": "1.2.2",
+  "publisher": "dsshamshin",
+  "description": "tools for restructuredtext markup",
+  "version": "1.2.4",
   "engines": {
-    "vscode": "^1.107.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
@@ -46,7 +46,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.107.0",
+    "@types/vscode": "^1.105.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.1",

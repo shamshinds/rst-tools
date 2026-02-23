@@ -126,6 +126,12 @@ export function registerDocCompletionProvider(
        item.range = range;
        item.insertText = id + ':';
        item.filterText = typed;
+
+       item.command = {
+        command: 'editor.action.triggerSuggest',
+        title: 'Trigger Suggest'
+       };
+       
        items.push(item);
       }
 

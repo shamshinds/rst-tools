@@ -25,7 +25,8 @@ export function parseIncludeSnippets(
  for (let lineNo = 0; lineNo < lines.length; lineNo++) {
   const line = lines[lineNo];
 
-  const m = /^\s*\.\.\s+include::\s+(.+)$/.exec(line);
+//  const m = /^\s*(?:[#*\-\d]+\.\s+|[#*\-]\s+)?\.\.\s+include::\s+(.+)$/.exec(line);
+  const m = /^\s*(?:\S+\s+)?\.\.\s+include::\s+(.+)$/.exec(line);
   if (!m) continue;
 
   const includePathRaw = m[1].trim();

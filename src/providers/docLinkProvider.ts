@@ -25,6 +25,19 @@ function resolveWorkspaceRootFromFile(filePath: string): string | null {
  return null;
 }
 
+function extractDocTarget(raw: string): string {
+ const lt = raw.lastIndexOf('<');
+ const gt = raw.lastIndexOf('>');
+
+ if (lt !== -1 && gt !== -1 && gt > lt) {
+  return raw.slice(lt + 1, gt).trim();
+ }
+
+ return raw.trim();
+}
+
+
+
 export function registerDocLinkProvider(
  context: vscode.ExtensionContext
 ) {
@@ -46,10 +59,12 @@ export function registerDocLinkProvider(
     let m: RegExpExecArray | null;
 
     while ((m = DOC_RE.exec(text)) !== null) {
-     const raw = m[1];
+     const raw = extractDocTarget(m[1]);
 
-     const start = doc.positionAt(m.index + 6);
-     const end = doc.positionAt(m.index + 6 + raw.length);
+     const fullMatch = m[0]; // :doc:`...`
+
+     const start = doc.positionAt(m.index + ':doc:`'.length);
+     const end = doc.positionAt(m.index + fullMatch.length - 1); // перед `
      const range = new vscode.Range(start, end);
 
      let target: string | null = null;
