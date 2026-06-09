@@ -31,7 +31,6 @@ export async function parseIncludes(confPath: string): Promise<string[]> {
   const full = path.resolve(path.dirname(confPath), cleaned);
 
   // ✅ Нормализация (гарантирует корректные separators)
-  console.log('[INCLUDE]', raw, '=>', full);
   includes.push(path.normalize(full));
  }
 

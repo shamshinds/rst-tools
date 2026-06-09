@@ -5,42 +5,11 @@ import * as path from 'path';
 import { findConfPy } from '../project/projectResolver';
 import { parseIntersphinxMapping } from '../doc/docResolver';
 import { discoverProjects } from '../doc/projectRegistry';
+import { getEffectiveFilePath } from '../utils/contextResolver';
+import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
+import { DOC_LINK_RE, extractDocTarget } from '../doc/docUtils';
 
-const DOC_RE = /:doc:`([^`]+)`/g;
-
-function resolveWorkspaceRootFromFile(filePath: string): string | null {
- let dir = path.dirname(filePath);
-
- while (true) {
-  const candidate = path.join(dir, 'source', 'ru', 'ru');
-  if (fs.existsSync(candidate)) {
-   return dir;
-  }
-  const parent = path.dirname(dir);
-  if (parent === dir) {
-   break;
-  }
-  dir = parent;
- }
- return null;
-}
-
-function extractDocTarget(raw: string): string {
- const lt = raw.lastIndexOf('<');
- const gt = raw.lastIndexOf('>');
-
- if (lt !== -1 && gt !== -1 && gt > lt) {
-  return raw.slice(lt + 1, gt).trim();
- }
-
- return raw.trim();
-}
-
-
-
-export function registerDocLinkProvider(
- context: vscode.ExtensionContext
-) {
+export function registerDocLinkProvider(context: vscode.ExtensionContext) {
  const provider = vscode.languages.registerDocumentLinkProvider(
   { scheme: 'file', language: 'restructuredtext' },
   {
@@ -48,69 +17,42 @@ export function registerDocLinkProvider(
     const links: vscode.DocumentLink[] = [];
     const text = doc.getText();
 
-    const workspaceRoot =
-     vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath ??
-     resolveWorkspaceRootFromFile(doc.fileName);
+    const effectivePath = getEffectiveFilePath(doc);
+    const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
+    if (!workspaceRoot) return links;
 
-    if (!workspaceRoot) {
-     return links;
-    }
-
+    const re = new RegExp(DOC_LINK_RE.source, 'g');
     let m: RegExpExecArray | null;
 
-    while ((m = DOC_RE.exec(text)) !== null) {
+    while ((m = re.exec(text)) !== null) {
      const raw = extractDocTarget(m[1]);
-
-     const fullMatch = m[0]; // :doc:`...`
-
      const start = doc.positionAt(m.index + ':doc:`'.length);
-     const end = doc.positionAt(m.index + fullMatch.length - 1); // перед `
+     const end = doc.positionAt(m.index + m[0].length - 1);
      const range = new vscode.Range(start, end);
 
      let target: string | null = null;
 
-     /* -------- межпроектная ссылка -------- */
-
      if (raw.includes(':')) {
       const [projectId, rel] = raw.split(':', 2);
-
-      const conf = findConfPy(doc.fileName);
-      if (!conf) {
-       continue;
-      }
+      const conf = findConfPy(effectivePath);
+      if (!conf) continue;
 
       const allowed = parseIntersphinxMapping(conf);
-      const projects = discoverProjects(workspaceRoot);
-
-      const project = projects.find(
+      const project = discoverProjects(workspaceRoot).find(
        p => p.id === projectId && allowed.has(p.id)
       );
+      if (!project) continue;
 
-      if (!project) {
-       continue;
-      }
-
-      target = path.join(
-       project.root,
-       rel.endsWith('.rst') ? rel : `${rel}.rst`
-      );
+      target = path.join(project.root, rel.endsWith('.rst') ? rel : `${rel}.rst`);
      } else {
-      /* -------- локальная ссылка -------- */
-
-      target = path.join(
-       path.dirname(doc.fileName),
-       raw.endsWith('.rst') ? raw : `${raw}.rst`
-      );
+      const baseDir = path.dirname(effectivePath);
+      target = path.join(baseDir, raw.endsWith('.rst') ? raw : `${raw}.rst`);
      }
 
-     if (!target || !fs.existsSync(target)) {
-      continue;
-     }
+     if (!target || !fs.existsSync(target)) continue;
 
-     const uri = vscode.Uri.file(target);
-     const link = new vscode.DocumentLink(range, uri);
-     link.tooltip = `Открыть файл в новой вкладке`;
-
+     const link = new vscode.DocumentLink(range, vscode.Uri.file(target));
+     link.tooltip = 'Открыть файл в новой вкладке';
      links.push(link);
     }
 

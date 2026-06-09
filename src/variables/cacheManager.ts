@@ -24,10 +24,7 @@ vscode.workspace.onDidSaveTextDocument(async doc => {
 
  const cache = caches.get(doc.fileName);
  if (cache) {
-  console.log('[RST] conf.py saved → rebuild cache');
   await cache.build();
- } else {
-  console.log('[RST] conf.py saved → no cache yet');
  }
 });
 
@@ -38,8 +35,7 @@ vscode.workspace.onDidSaveTextDocument(async doc => {
 vscode.workspace.onDidSaveTextDocument(async doc => {
  if (!doc.fileName.endsWith('.rsti')) return;
 
- for (const [confPath, cache] of caches) {
-  console.log('[RST] rsti saved → rebuild cache', confPath, doc.fileName);
+ for (const cache of caches.values()) {
   await cache.build();
  }
 });
