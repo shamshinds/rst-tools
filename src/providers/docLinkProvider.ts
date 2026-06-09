@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { findConfPy } from '../project/projectResolver';
-import { parseIntersphinxMapping } from '../doc/docResolver';
 import { discoverProjects } from '../doc/projectRegistry';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
@@ -34,13 +32,8 @@ export function registerDocLinkProvider(context: vscode.ExtensionContext) {
 
      if (raw.includes(':')) {
       const [projectId, rel] = raw.split(':', 2);
-      const conf = findConfPy(effectivePath);
-      if (!conf) continue;
 
-      const allowed = parseIntersphinxMapping(conf);
-      const project = discoverProjects(workspaceRoot).find(
-       p => p.id === projectId && allowed.has(p.id)
-      );
+      const project = discoverProjects(workspaceRoot).find(p => p.id === projectId);
       if (!project) continue;
 
       target = path.join(project.root, rel.endsWith('.rst') ? rel : `${rel}.rst`);
@@ -49,7 +42,7 @@ export function registerDocLinkProvider(context: vscode.ExtensionContext) {
       target = path.join(baseDir, raw.endsWith('.rst') ? raw : `${raw}.rst`);
      }
 
-     if (!target || !fs.existsSync(target)) continue;
+     if (!target || !fs.existsSync(target) || !fs.statSync(target).isFile()) continue;
 
      const link = new vscode.DocumentLink(range, vscode.Uri.file(target));
      link.tooltip = 'Открыть файл в новой вкладке';
