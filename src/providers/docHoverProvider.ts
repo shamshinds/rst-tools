@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { findConfPy } from '../project/projectResolver';
 import { discoverProjects } from '../doc/projectRegistry';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
@@ -51,19 +50,18 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
 
     if (link.includes(':')) {
      const [projectId, relPath] = link.split(':', 2);
-     const confPy = findConfPy(effectivePath);
-     if (!confPy || !workspaceRoot) return;
+     if (!workspaceRoot) return;
 
      const project = discoverProjects(workspaceRoot).find(p => p.id === projectId);
      if (!project) return;
 
      const full = path.resolve(project.root, relPath);
-     if (fs.existsSync(full)) {
-      const title = readRstTitle(full);
-      if (title) md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
-      md.appendMarkdown(`**Путь к файлу**: \`${full}\`\n\n`);
-      if (parentContext) md.appendMarkdown(`**Контекст**: \`${parentContext}\``);
-     }
+     if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return;
+
+     const title = readRstTitle(full);
+     if (title) md.appendMarkdown(`**Заголовок:** ${title}\n\n`);
+     md.appendMarkdown(`**Путь к файлу**: \`${full}\`\n\n`);
+     if (parentContext) md.appendMarkdown(`**Контекст**: \`${parentContext}\``);
 
      return new vscode.Hover(md);
     }
@@ -71,7 +69,7 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
     const baseDir = path.dirname(effectivePath);
     const full = path.resolve(baseDir, link);
 
-    if (fs.existsSync(full)) {
+    if (fs.existsSync(full) && fs.statSync(full).isFile()) {
      const title = readRstTitle(full);
      if (title) md.appendMarkdown(`**Заголовок**: ${title}\n\n`);
      md.appendMarkdown(`**Путь к файлу**: \`${full}\`\n\n`);

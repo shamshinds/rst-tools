@@ -16,7 +16,7 @@ export function normalizeDocTarget(raw: string): string {
   p = p.slice(0, hash);
  }
 
- if (p && !p.endsWith('.rst') && !p.endsWith('/')) {
+ if (p && !p.endsWith('.rst')) {
   p += '.rst';
  }
 

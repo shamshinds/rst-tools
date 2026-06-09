@@ -19,7 +19,7 @@ export function registerDefinitionProvider(context: vscode.ExtensionContext) {
 
     const targetDoc = await vscode.workspace.openTextDocument(variable.source);
     const text = targetDoc.getText();
-    const defRegex = new RegExp(`^\\.\\.\\.\\s+\\|${name}\\|\\s+replace::`, 'm');
+    const defRegex = new RegExp(`^\\.\\. \\|${name}\\|\\s+replace::`, 'm');
     const match = defRegex.exec(text);
     if (!match) return;
 

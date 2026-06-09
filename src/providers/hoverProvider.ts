@@ -19,9 +19,7 @@ export function registerHoverProvider(context: vscode.ExtensionContext) {
     const vars = await indexVariables(effectivePath);
     const variable = vars.get(name);
 
-    if (!variable) {
-     return new vscode.Hover(`❌ Переменная **${name}** не найдена`);
-    }
+    if (!variable) return;
 
     const parentContext = includeContext.get(doc.fileName);
 
@@ -46,25 +44,23 @@ export function registerHoverProvider(context: vscode.ExtensionContext) {
       md.appendMarkdown(`\n\n**Контекст**: \`${parentContext}\``);
      }
 
-     if (fs.existsSync(variable.imagePath)) {
-      const uri = vscode.Uri.file(variable.imagePath);
-      md.appendMarkdown(
-       `<img src="${uri.toString()}" ` +
-       `style="max-width:360px; max-height:240px; object-fit:contain;` +
-       `border-radius:6px; border:1px solid rgba(120,120,120,.25);" />\n\n`
-      );
-      const fullArg = JSON.stringify(variable.imagePath);
-      md.appendMarkdown(
-       `[Открыть изображение в новой вкладке](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
-      );
-     } else {
-      md.appendMarkdown(`❌ Файл изображения не найден \n\n\`${variable.imagePath}\`\n\n`);
-     }
+     if (!fs.existsSync(variable.imagePath)) return;
+
+     const uri = vscode.Uri.file(variable.imagePath);
+     md.appendMarkdown(
+      `<img src="${uri.toString()}" ` +
+      `style="max-width:360px; max-height:240px; object-fit:contain;` +
+      `border-radius:6px; border:1px solid rgba(120,120,120,.25);" />\n\n`
+     );
+     const fullArg = JSON.stringify(variable.imagePath);
+     md.appendMarkdown(
+      `[Открыть изображение в новой вкладке](command:${OPEN_IMAGE_CMD}?${encodeURIComponent(fullArg)})\n\n`
+     );
 
      return new vscode.Hover(md);
     }
 
-    return new vscode.Hover(`**${name}** (Неизвестный тип переменной)`);
+    return;
    }
   }
  );

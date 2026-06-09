@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { findConfPy } from '../project/projectResolver';
-import { parseIntersphinxMapping } from '../doc/docResolver';
 import { discoverProjects } from '../doc/projectRegistry';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
@@ -72,17 +70,16 @@ export function registerDocCompletionProvider(context: vscode.ExtensionContext) 
     const effectivePath = getEffectiveFilePath(doc);
     const rawQuery = getQuerySegment(typed);
     const query = normalizeQuery(rawQuery);
-    const confPy = findConfPy(effectivePath);
     const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
     if (!workspaceRoot) return;
 
     /* ------------------- PROJECT ID ------------------- */
 
-    if (!typed.includes(':') && confPy && !typed.includes('/') && !typed.includes('.')) {
-     const allowed = parseIntersphinxMapping(confPy);
+    if (!typed.includes(':') && !typed.includes('/') && !typed.includes('.')) {
+     const allProjects = discoverProjects(workspaceRoot);
      const items: vscode.CompletionItem[] = [];
 
-     for (const id of [...allowed.values()].sort()) {
+     for (const { id } of [...allProjects].sort((a, b) => a.id.localeCompare(b.id))) {
       if (typed && !id.toLowerCase().startsWith(typed.toLowerCase())) continue;
 
       const item = new vscode.CompletionItem(id, vscode.CompletionItemKind.Module);
@@ -102,12 +99,8 @@ export function registerDocCompletionProvider(context: vscode.ExtensionContext) 
 
     if (typed.includes(':')) {
      const [projectId, rest = ''] = typed.split(':', 2);
-     if (!confPy) return;
 
-     const allowed = parseIntersphinxMapping(confPy);
-     const project = discoverProjects(workspaceRoot).find(
-      p => p.id === projectId && allowed.has(p.id)
-     );
+     const project = discoverProjects(workspaceRoot).find(p => p.id === projectId);
      if (!project) return;
 
      const fsDir = path.resolve(project.root, getFsDirFromTyped(rest));

@@ -23,10 +23,12 @@ export function registerDiagnosticsProvider(context: vscode.ExtensionContext) {
   while ((match = REG.exec(text)) !== null) {
    const name = match[1];
    const variable = vars.get(name);
-   const pos = doc.positionAt(match.index);
-   const range = new vscode.Range(pos, pos);
+   const range = new vscode.Range(
+    doc.positionAt(match.index),
+    doc.positionAt(match.index + match[0].length)
+   );
 
-   if (doc.lineAt(pos.line).text.trim().startsWith('.. |')) continue;
+   if (doc.lineAt(doc.positionAt(match.index).line).text.trim().startsWith('.. |')) continue;
 
    if (!variable) {
     diags.push(new vscode.Diagnostic(
