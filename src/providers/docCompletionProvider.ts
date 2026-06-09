@@ -1,5 +1,3 @@
-// src/providers/docCompletionProvider.ts
-
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,41 +5,25 @@ import * as path from 'path';
 import { findConfPy } from '../project/projectResolver';
 import { parseIntersphinxMapping } from '../doc/docResolver';
 import { discoverProjects } from '../doc/projectRegistry';
-
-/* ======================= helpers ======================= */
+import { getEffectiveFilePath } from '../utils/contextResolver';
+import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
 
 function stripRstExt(name: string): string {
- return name.toLowerCase().endsWith('.rst') ? name.slice(0, -4) : name;
+ if (name.endsWith('.rsti')) return name.slice(0, -5);
+ if (name.endsWith('.rst')) return name.slice(0, -4);
+ return name;
 }
 
-function getWorkspaceRoot(doc: vscode.TextDocument): string | null {
- const folder = vscode.workspace.getWorkspaceFolder(doc.uri);
- return folder ? folder.uri.fsPath : null;
+function getQuerySegment(typed: string): string {
+ if (!typed || typed.endsWith('/')) return '';
+ const idx = typed.lastIndexOf('/');
+ return idx === -1 ? typed : typed.slice(idx + 1);
 }
 
-function resolveWorkspaceRootFromFile(filePath: string): string | null {
- let dir = path.dirname(filePath);
-
- while (true) {
-  const candidate = path.join(dir, 'source', 'ru', 'ru');
-  if (fs.existsSync(candidate)) {
-   return dir;
-  }
-
-  const parent = path.dirname(dir);
-  if (parent === dir) break;
-  dir = parent;
- }
-
- return null;
+function normalizeQuery(q: string): string {
+ return q.replace(/^(\.\.\/)+/, '').toLowerCase();
 }
 
-/**
- * Находит диапазон пути внутри :doc:`...`
- * Поддерживает:
- *  - :doc:`path`
- *  - :doc:`text <path>`  (дополняем только часть path)
- */
 function getDocPathRange(
  document: vscode.TextDocument,
  position: vscode.Position
@@ -63,38 +45,22 @@ function getDocPathRange(
   );
  }
 
- return new vscode.Range(
-  new vscode.Position(position.line, start),
-  position
- );
+ return new vscode.Range(new vscode.Position(position.line, start), position);
 }
 
 function getFsDirFromTyped(typed: string): string {
  if (!typed) return '.';
- if (typed.endsWith('/')) return typed;
-
  const idx = typed.lastIndexOf('/');
- if (idx === -1) return '.';
-
- return typed.slice(0, idx);
+ return idx === -1 ? '.' : typed.slice(0, idx + 1);
 }
 
 function getInsertBase(typed: string): string {
- if (!typed) return '';
-
+ if (!typed || !typed.includes('/')) return '';
  if (typed.endsWith('/')) return typed;
-
- const idx = typed.lastIndexOf('/');
- if (idx === -1) return '';
-
- return typed.slice(0, idx + 1);
+ return typed.slice(0, typed.lastIndexOf('/') + 1);
 }
 
-/* ======================= provider ======================= */
-
-export function registerDocCompletionProvider(
- context: vscode.ExtensionContext
-) {
+export function registerDocCompletionProvider(context: vscode.ExtensionContext) {
  const provider = vscode.languages.registerCompletionItemProvider(
   { language: 'restructuredtext', scheme: 'file' },
   {
@@ -103,152 +69,115 @@ export function registerDocCompletionProvider(
     if (!range) return;
 
     const typed = doc.getText(range);
+    const effectivePath = getEffectiveFilePath(doc);
+    const rawQuery = getQuerySegment(typed);
+    const query = normalizeQuery(rawQuery);
+    const confPy = findConfPy(effectivePath);
+    const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
+    if (!workspaceRoot) return;
 
-    const confPy = findConfPy(doc.fileName);
+    /* ------------------- PROJECT ID ------------------- */
 
-    const workspaceRoot =
-     getWorkspaceRoot(doc) ??
-     resolveWorkspaceRootFromFile(doc.fileName);
-
-    /* ------------------- PROJECT ID (EXTERNAL) ------------------- */
-    // ✅ Показываем подключенные проекты даже до ввода ":"
-    if (!typed.includes(':') && confPy) {
+    if (!typed.includes(':') && confPy && !typed.includes('/') && !typed.includes('.')) {
      const allowed = parseIntersphinxMapping(confPy);
+     const items: vscode.CompletionItem[] = [];
 
-     if (allowed.size > 0) {
-      const items: vscode.CompletionItem[] = [];
+     for (const id of [...allowed.values()].sort()) {
+      if (typed && !id.toLowerCase().startsWith(typed.toLowerCase())) continue;
 
-      for (const id of [...allowed.values()].sort()) {
-       const item = new vscode.CompletionItem(
-        id,
-        vscode.CompletionItemKind.Module
-       );
-       item.range = range;
-       item.insertText = id + ':';
-       item.filterText = typed;
+      const item = new vscode.CompletionItem(id, vscode.CompletionItemKind.Module);
+      item.range = range;
+      item.insertText = id + ':';
+      item.filterText = id;
+      item.command = { command: 'editor.action.triggerSuggest', title: 'Trigger Suggest' };
+      items.push(item);
+     }
 
-       item.command = {
-        command: 'editor.action.triggerSuggest',
-        title: 'Trigger Suggest'
-       };
-       
-       items.push(item);
-      }
-
-      // если пользователь реально начал вводить project-id
-      if (/^[a-z0-9_-]+$/i.test(typed) || typed === '') {
-       return items;
-      }
+     if (/^[a-z0-9_-]*$/i.test(typed)) {
+      return new vscode.CompletionList(items, true);
      }
     }
 
-    if (!workspaceRoot) return;
-
-    /* ------------------- EXTERNAL PROJECT ------------------- */
+    /* ------------------- EXTERNAL ------------------- */
 
     if (typed.includes(':')) {
      const [projectId, rest = ''] = typed.split(':', 2);
-
      if (!confPy) return;
 
      const allowed = parseIntersphinxMapping(confPy);
-     const projects = discoverProjects(workspaceRoot);
-
-     const project = projects.find(
+     const project = discoverProjects(workspaceRoot).find(
       p => p.id === projectId && allowed.has(p.id)
      );
      if (!project) return;
 
-     const fsDir = path.resolve(
-      project.root,
-      getFsDirFromTyped(rest)
-     );
-     if (!fs.existsSync(fsDir)) return;
+     const fsDir = path.resolve(project.root, getFsDirFromTyped(rest));
+     if (!fs.existsSync(fsDir)) return [];
 
      const insertBase = getInsertBase(rest);
-
+     const localQuery = normalizeQuery(getQuerySegment(rest));
      const items: vscode.CompletionItem[] = [];
 
      for (const entry of fs.readdirSync(fsDir, { withFileTypes: true })) {
+      const name = entry.name;
+      const base = stripRstExt(name);
+
+      if (localQuery && !base.toLowerCase().startsWith(localQuery)) continue;
+
       if (entry.isDirectory()) {
-       const item = new vscode.CompletionItem(
-        entry.name + '/',
-        vscode.CompletionItemKind.Folder
-       );
+       const item = new vscode.CompletionItem(name + '/', vscode.CompletionItemKind.Folder);
        item.range = range;
-       item.insertText =
-        `${projectId}:${insertBase}${entry.name}/`;
+       item.insertText = `${projectId}:${insertBase}${name}/`;
        item.filterText = typed;
-       item.command = {
-        command: 'editor.action.triggerSuggest',
-        title: 'Continue'
-       };
+       item.command = { command: 'editor.action.triggerSuggest', title: 'Continue' };
        items.push(item);
       }
 
-      if (entry.isFile() && entry.name.endsWith('.rst')) {
-       const item = new vscode.CompletionItem(
-        stripRstExt(entry.name),
-        vscode.CompletionItemKind.File
-       );
+      if (entry.isFile() && (name.endsWith('.rst') || name.endsWith('.rsti'))) {
+       const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
        item.range = range;
-
-       // ✅ вставляем имя без расширения .rst
-       item.insertText =
-        `${projectId}:${insertBase}${stripRstExt(entry.name)}`;
-
+       item.insertText = `${projectId}:${insertBase}${stripRstExt(name)}`;
        item.filterText = typed;
        items.push(item);
       }
      }
 
-     return items;
+     return new vscode.CompletionList(items, true);
     }
 
-    /* ---------------------- LOCAL PROJECT ------------------- */
+    /* ------------------- LOCAL ------------------- */
 
-    const fsDir = path.resolve(
-     path.dirname(doc.fileName),
-     getFsDirFromTyped(typed)
-    );
-    if (!fs.existsSync(fsDir)) return;
+    const baseDir = path.dirname(doc.fileName);
+    const fsDir = path.resolve(baseDir, getFsDirFromTyped(typed));
+    if (!fs.existsSync(fsDir)) return [];
 
     const insertBase = getInsertBase(typed);
-
     const items: vscode.CompletionItem[] = [];
 
     for (const entry of fs.readdirSync(fsDir, { withFileTypes: true })) {
+     const name = entry.name;
+     const base = stripRstExt(name);
+
+     if (query && !base.toLowerCase().includes(query)) continue;
+
      if (entry.isDirectory()) {
-      const item = new vscode.CompletionItem(
-       entry.name + '/',
-       vscode.CompletionItemKind.Folder
-      );
+      const item = new vscode.CompletionItem(name + '/', vscode.CompletionItemKind.Folder);
       item.range = range;
-      item.insertText = insertBase + entry.name + '/';
+      item.insertText = insertBase + name + '/';
       item.filterText = typed;
-      item.command = {
-       command: 'editor.action.triggerSuggest',
-       title: 'Continue'
-      };
+      item.command = { command: 'editor.action.triggerSuggest', title: 'Continue' };
       items.push(item);
      }
 
-     if (entry.isFile() && entry.name.endsWith('.rst')) {
-      const item = new vscode.CompletionItem(
-       stripRstExt(entry.name),
-       vscode.CompletionItemKind.File
-      );
+     if (entry.isFile() && name.endsWith('.rst')) {
+      const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
       item.range = range;
-
-      // ✅ вставляем имя без расширения .rst
-      item.insertText = insertBase + stripRstExt(entry.name);
-
+      item.insertText = insertBase + base;
       item.filterText = typed;
       items.push(item);
      }
     }
 
-    return items;
+    return new vscode.CompletionList(items, false);
    }
   },
   '/', '.', ':'

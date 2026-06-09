@@ -10,8 +10,6 @@ import * as vscode from 'vscode';
  */
 const intersphinxCache = new Map<string, Set<string>>();
 
-console.log('[RST DOC] docResolver loaded');
-
 export function parseIntersphinxMapping(confPath: string): Set<string> {
  // ✅ если есть в кэше — возвращаем
  const cached = intersphinxCache.get(confPath);
@@ -62,7 +60,6 @@ export function invalidateIntersphinxMapping(confPath: string) {
 
 vscode.workspace.onDidSaveTextDocument(doc => {
  if (doc.fileName.endsWith('conf.py')) {
-  console.log('[RST DOC] invalidate intersphinx cache:', doc.fileName);
   intersphinxCache.delete(doc.fileName);
  }
 });

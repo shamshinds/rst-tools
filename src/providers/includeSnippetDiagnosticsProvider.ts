@@ -1,97 +1,68 @@
-// src/providers/includeSnippetDiagnosticsProvider.ts
-
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 import { findConfPy } from '../project/projectResolver';
 import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
+import { getEffectiveFilePath } from '../utils/contextResolver';
 
-export function registerIncludeSnippetDiagnosticsProvider(
- context: vscode.ExtensionContext
-) {
- const collection =
-  vscode.languages.createDiagnosticCollection('rst-include-snippets');
-
+export function registerIncludeSnippetDiagnosticsProvider(context: vscode.ExtensionContext) {
+ const collection = vscode.languages.createDiagnosticCollection('rst-include-snippets');
  context.subscriptions.push(collection);
 
  function validate(doc: vscode.TextDocument) {
-  if (doc.languageId !== 'restructuredtext') {
-   return;
-  }
+  if (doc.languageId !== 'restructuredtext') return;
 
-  const confPy = findConfPy(doc.fileName);
+  const effectivePath = getEffectiveFilePath(doc);
+  const confPy = findConfPy(effectivePath);
   if (!confPy) {
    collection.delete(doc.uri);
    return;
   }
 
   const diagnostics: vscode.Diagnostic[] = [];
-
-  const snippets = parseIncludeSnippets(
-   doc.getText(),
-   doc.fileName,
-   confPy
-  );
+  const snippets = parseIncludeSnippets(doc.getText(), effectivePath, confPy);
 
   for (const s of snippets) {
-   // Диапазон — ТОЛЬКО путь include:: на строке
    const range = new vscode.Range(
     new vscode.Position(s.line, s.columnStart),
     new vscode.Position(s.line, s.columnEnd)
    );
 
-   // --- файл include не найден ---
    if (!fs.existsSync(s.includeFileAbs)) {
-    diagnostics.push(
-     new vscode.Diagnostic(
-      range,
-      `❌ Файл не найден: ${s.includeFileAbs}`,
-      vscode.DiagnosticSeverity.Error
-     )
-    );
+    diagnostics.push(new vscode.Diagnostic(
+     range,
+     `❌ Файл не найден: ${s.includeFileAbs}`,
+     vscode.DiagnosticSeverity.Error
+    ));
     continue;
    }
 
-   // --- проверка start-after ---
-   if (s.startAfter) {
-    try {
-     const text = fs.readFileSync(s.includeFileAbs, 'utf-8');
-     if (!text.includes(s.startAfter)) {
-      diagnostics.push(
-       new vscode.Diagnostic(
-        range,
-        `❌ Не удалось найти начало фрагмента: ${s.startAfter}`,
-        vscode.DiagnosticSeverity.Error
-       )
-      );
-     }
-    } catch {
-     diagnostics.push(
-      new vscode.Diagnostic(
-       range,
-       `❌ Невозможно прочитать файл: ${s.includeFileAbs}`,
-       vscode.DiagnosticSeverity.Error
-      )
-     );
-    }
+   let text: string | null = null;
+   try {
+    text = fs.readFileSync(s.includeFileAbs, 'utf-8');
+   } catch {
+    diagnostics.push(new vscode.Diagnostic(
+     range,
+     `❌ Невозможно прочитать файл: ${s.includeFileAbs}`,
+     vscode.DiagnosticSeverity.Error
+    ));
+    continue;
    }
 
-   // --- проверка end-before ---
-   if (s.endBefore) {
-    try {
-     const text = fs.readFileSync(s.includeFileAbs, 'utf-8');
-     if (!text.includes(s.endBefore)) {
-      diagnostics.push(
-       new vscode.Diagnostic(
-        range,
-        `❌ Не удалось найти конец фрагмента: ${s.endBefore}`,
-        vscode.DiagnosticSeverity.Warning
-       )
-      );
-     }
-    } catch {
-     // уже обработано выше
-    }
+   if (s.startAfter && !text.includes(s.startAfter)) {
+    diagnostics.push(new vscode.Diagnostic(
+     range,
+     `❌ Не удалось найти начало фрагмента: ${s.startAfter}`,
+     vscode.DiagnosticSeverity.Error
+    ));
+   }
+
+   if (s.endBefore && !text.includes(s.endBefore)) {
+    diagnostics.push(new vscode.Diagnostic(
+     range,
+     `❌ Не удалось найти конец фрагмента: ${s.endBefore}`,
+     vscode.DiagnosticSeverity.Warning
+    ));
    }
   }
 
@@ -101,9 +72,7 @@ export function registerIncludeSnippetDiagnosticsProvider(
  context.subscriptions.push(
   vscode.workspace.onDidOpenTextDocument(validate),
   vscode.workspace.onDidChangeTextDocument(e => validate(e.document)),
-  vscode.workspace.onDidCloseTextDocument(doc =>
-   collection.delete(doc.uri)
-  )
+  vscode.workspace.onDidCloseTextDocument(doc => collection.delete(doc.uri))
  );
 
  vscode.workspace.textDocuments.forEach(validate);

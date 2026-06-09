@@ -18,14 +18,10 @@ import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
 export function registerIncludeSnippetDefinitionProvider(
  context: vscode.ExtensionContext
 ) {
- console.log('[INCLUDE DEF] register definition provider');
-
  const provider = vscode.languages.registerDefinitionProvider(
   { scheme: 'file', language: 'restructuredtext' },
   {
    async provideDefinition(doc, pos) {
-    console.log('[INCLUDE DEF] provideDefinition called');
-
     const confPy = findConfPy(doc.fileName);
     if (!confPy) {
      return;
