@@ -5,7 +5,8 @@ import * as path from 'path';
 import { discoverProjects } from '../doc/projectRegistry';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
-import { DOC_LINK_RE, normalizeDocTarget } from '../doc/docUtils';
+import { DOC_LINK_RE, normalizeDocTarget, resolveLocalDocTarget } from '../doc/docUtils';
+import { findConfPy } from '../project/projectResolver';
 
 export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext) {
  const collection = vscode.languages.createDiagnosticCollection('rst-doc');
@@ -17,6 +18,7 @@ export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext)
   const effectivePath = getEffectiveFilePath(doc);
   const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
   if (!workspaceRoot) return;
+  const confPath = findConfPy(effectivePath);
 
   const diagnostics: vscode.Diagnostic[] = [];
   const text = doc.getText();
@@ -56,7 +58,7 @@ export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext)
     continue;
    }
 
-   const localTarget = path.resolve(path.dirname(effectivePath), normalized);
+   const localTarget = resolveLocalDocTarget(normalized, effectivePath, confPath);
    if (!fs.existsSync(localTarget) || !fs.statSync(localTarget).isFile()) {
     diagnostics.push(new vscode.Diagnostic(
      range,

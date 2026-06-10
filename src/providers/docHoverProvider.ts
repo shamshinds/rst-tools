@@ -5,7 +5,8 @@ import * as path from 'path';
 import { discoverProjects } from '../doc/projectRegistry';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
-import { normalizeDocTarget, splitDocRole, readRstTitle } from '../doc/docUtils';
+import { normalizeDocTarget, splitDocRole, readRstTitle, resolveLocalDocTarget } from '../doc/docUtils';
+import { findConfPy } from '../project/projectResolver';
 import { includeContext } from '../providers/includeSnippetHoverProvider';
 
 function getDocRoleRange(
@@ -66,8 +67,8 @@ export function registerDocHoverProvider(context: vscode.ExtensionContext) {
      return new vscode.Hover(md);
     }
 
-    const baseDir = path.dirname(effectivePath);
-    const full = path.resolve(baseDir, link);
+    const confPath = findConfPy(effectivePath);
+    const full = resolveLocalDocTarget(link, effectivePath, confPath);
 
     if (fs.existsSync(full) && fs.statSync(full).isFile()) {
      const title = readRstTitle(full);

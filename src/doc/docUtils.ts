@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 
 export const DOC_LINK_RE = /:doc:`([^`]+)`/g;
 
@@ -39,6 +40,23 @@ export function splitDocRole(raw: string): { label: string; target: string } {
 
 export function extractDocTarget(raw: string): string {
  return splitDocRole(raw).target;
+}
+
+/**
+ * Resolves a local (non-project-prefixed) doc target to an absolute filesystem path.
+ * Paths starting with "/" are relative to the conf.py directory (Sphinx convention),
+ * not to the OS root — this ensures correct behavior on both Windows and macOS.
+ */
+export function resolveLocalDocTarget(
+ normalizedTarget: string,
+ effectiveFilePath: string,
+ confPath: string | null
+): string {
+ if (normalizedTarget.startsWith('/') && confPath) {
+  const cleaned = normalizedTarget.replace(/^[/\\]+/, '');
+  return path.normalize(path.resolve(path.dirname(confPath), cleaned));
+ }
+ return path.resolve(path.dirname(effectiveFilePath), normalizedTarget);
 }
 
 export function readRstTitle(filePath: string): string | null {
