@@ -11,42 +11,52 @@ export class ProjectCache {
  private variables = new Map<string, RstVariable>();
  private watchers: vscode.FileSystemWatcher[] = [];
  private rebuildTimer?: NodeJS.Timeout;
+ private pendingResolve?: () => void;
+ private buildPromise: Promise<void> = Promise.resolve();
 
  constructor(private confPath: string) { }
 
- async build() {
+ build(): Promise<void> {
   if (this.rebuildTimer) {
    clearTimeout(this.rebuildTimer);
   }
 
-  this.rebuildTimer = setTimeout(async () => {
-   this.variables.clear();
-   this.dispose();
+  // Каждый вызов build() возвращает Promise, который резолвится
+  // только после фактического завершения построения кеша.
+  // Без этого await cache.build() возвращался до окончания setTimeout,
+  // и диагностика видела пустой кеш при первом открытии файла.
+  this.buildPromise = new Promise<void>((resolve) => {
+   this.pendingResolve = resolve;
 
-   const includes = await parseIncludes(this.confPath);
+   this.rebuildTimer = setTimeout(async () => {
+    this.variables.clear();
+    this.dispose();
 
-   for (const file of includes) {
-    if (!fs.existsSync(file)) continue;
+    const includes = await parseIncludes(this.confPath);
 
-    const text = this.readFile(file);
+    for (const file of includes) {
+     if (!fs.existsSync(file)) continue;
 
-    extractVariables(text, file).forEach((v, name) => {
-     // всегда нормализуем source
-     v.source = path.normalize(v.source);
+     const text = this.readFile(file);
 
-     // ✅ FIX: imagePath может быть:
-     // - "/../../..." (от conf.py)
-     // - "./..." или "../..." (от текущего rsti файла)
-     if (v.kind === 'image' && v.imagePath) {
-      v.imagePath = resolveRstPath(v.imagePath, file, this.confPath);
-     }
+     extractVariables(text, file).forEach((v, name) => {
+      v.source = path.normalize(v.source);
 
-     this.variables.set(name, v);
-    });
+      if (v.kind === 'image' && v.imagePath) {
+       v.imagePath = resolveRstPath(v.imagePath, file, this.confPath);
+      }
 
-    this.watch(file);
-   }
-  }, 100);
+      this.variables.set(name, v);
+     });
+
+     this.watch(file);
+    }
+
+    resolve();
+   }, 100);
+  });
+
+  return this.buildPromise;
  }
 
  getVariables() {
