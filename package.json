@@ -3,7 +3,7 @@
   "displayName": "rst-tools",
   "publisher": "dsshamshin",
   "description": "tools for restructuredtext markup",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "engines": {
     "vscode": "^1.105.0"
   },
