@@ -28,6 +28,17 @@
       {
         "command": "rstTools.openIncludeAtMarker",
         "title": "RST Tools: Open include file at marker"
+      },
+      {
+        "command": "rstTools.insertFlatTable",
+        "title": "RST Tools: Вставить flat-table"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "rstTools.insertFlatTable",
+        "key": "ctrl+shift+t",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ]
   },

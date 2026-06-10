@@ -14,6 +14,10 @@ import { registerIncludeSnippetDiagnosticsProvider } from './providers/includeSn
 import { registerOpenIncludeAtMarkerCommand } from './includes/openIncludeAtMarkerCommand';
 import { registerIncludeSnippetLinkProvider } from './providers/includeSnippetLinkProvider';
 import { registerIncludeDefinitionProvider } from './providers/includeDefinitionProvider';
+import { registerTermCompletionProvider } from './providers/termCompletionProvider';
+import { registerTermHoverProvider } from './providers/termHoverProvider';
+import { registerTermDiagnosticsProvider } from './providers/termDiagnosticsProvider';
+import { registerFlatTableCommand } from './tables/flatTableCommand';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -36,6 +40,12 @@ export function activate(context: vscode.ExtensionContext) {
  registerOpenIncludeAtMarkerCommand(context);
  registerIncludeSnippetLinkProvider(context);
  registerIncludeDefinitionProvider(context);
+
+ registerTermCompletionProvider(context);
+ registerTermHoverProvider(context);
+ registerTermDiagnosticsProvider(context);
+
+ registerFlatTableCommand(context);
 
 }
 
