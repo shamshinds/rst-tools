@@ -28,7 +28,12 @@ export function registerDiagnosticsProvider(context: vscode.ExtensionContext) {
    const pos = doc.positionAt(match.index);
    const range = new vscode.Range(pos, doc.positionAt(match.index + match[0].length));
 
-   if (literalLines.has(pos.line)) continue;
+   if (literalLines.has(pos.line)) {
+    // Откатываем на позицию сразу после этого |, чтобы следующий
+    // поиск не пропустил легитимные переменные за пределами блока кода.
+    REG.lastIndex = match.index + 1;
+    continue;
+   }
    if (doc.lineAt(pos.line).text.trim().startsWith('.. |')) continue;
 
    if (!variable) {
