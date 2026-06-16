@@ -5,6 +5,7 @@ import { indexVariables } from '../variables/variableIndex';
 import { OPEN_IMAGE_CMD } from '../images/previewCommand';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { includeContext } from '../providers/includeSnippetHoverProvider';
+import { buildLiteralLineSet } from '../utils/rstTextUtils';
 
 export function registerHoverProvider(context: vscode.ExtensionContext) {
  const provider = vscode.languages.registerHoverProvider(
@@ -13,6 +14,9 @@ export function registerHoverProvider(context: vscode.ExtensionContext) {
    async provideHover(doc, pos) {
     const range = doc.getWordRangeAtPosition(pos, /\|[^|]+\|/);
     if (!range) return;
+
+    const literalLines = buildLiteralLineSet(doc.getText());
+    if (literalLines.has(pos.line)) return;
 
     const name = doc.getText(range).slice(1, -1);
     const effectivePath = getEffectiveFilePath(doc);
