@@ -38,6 +38,7 @@
       {
         "command": "rstTools.insertFlatTable",
         "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ]
