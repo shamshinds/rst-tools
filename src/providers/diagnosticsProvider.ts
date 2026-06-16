@@ -3,6 +3,7 @@ import * as fs from 'fs';
 
 import { indexVariables } from '../variables/variableIndex';
 import { getEffectiveFilePath } from '../utils/contextResolver';
+import { buildLiteralLineSet } from '../utils/rstTextUtils';
 
 export function registerDiagnosticsProvider(context: vscode.ExtensionContext) {
  const collection = vscode.languages.createDiagnosticCollection('rst-vars');
@@ -16,6 +17,7 @@ export function registerDiagnosticsProvider(context: vscode.ExtensionContext) {
 
   const diags: vscode.Diagnostic[] = [];
   const text = doc.getText();
+  const literalLines = buildLiteralLineSet(text);
   const REG = /\|([^|]+)\|/g;
 
   let match: RegExpExecArray | null;
@@ -23,12 +25,11 @@ export function registerDiagnosticsProvider(context: vscode.ExtensionContext) {
   while ((match = REG.exec(text)) !== null) {
    const name = match[1];
    const variable = vars.get(name);
-   const range = new vscode.Range(
-    doc.positionAt(match.index),
-    doc.positionAt(match.index + match[0].length)
-   );
+   const pos = doc.positionAt(match.index);
+   const range = new vscode.Range(pos, doc.positionAt(match.index + match[0].length));
 
-   if (doc.lineAt(doc.positionAt(match.index).line).text.trim().startsWith('.. |')) continue;
+   if (literalLines.has(pos.line)) continue;
+   if (doc.lineAt(pos.line).text.trim().startsWith('.. |')) continue;
 
    if (!variable) {
     diags.push(new vscode.Diagnostic(
