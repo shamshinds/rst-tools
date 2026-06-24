@@ -86,22 +86,28 @@ export function registerIncludeSnippetHoverProvider(context: vscode.ExtensionCon
      md.isTrusted = true;
 
      if (fs.existsSync(s.includeFileAbs)) {
-      md.appendMarkdown(`**Путь к файлу**: ✅ \n\`${s.includeFileAbs}\`\n\n`);
+      md.appendMarkdown(`**Путь к файлу**: ✅ \`${s.includeFileAbs}\`\n\n`);
 
-      if (s.startAfter) md.appendMarkdown(`**Начало фрагмента**: \`${s.startAfter}\`\n\n`);
-      if (s.endBefore) md.appendMarkdown(`**Конец фрагмента**: \`${s.endBefore}\`\n\n`);
+      let content: string | null = null;
+      try { content = fs.readFileSync(s.includeFileAbs, 'utf8'); } catch { /* ignore */ }
 
-      try {
-       const content = fs.readFileSync(s.includeFileAbs, 'utf8');
+      const startFound = !s.startAfter || (content !== null && content.includes(s.startAfter));
+      const endFound = !s.endBefore || (content !== null && content.includes(s.endBefore));
+
+      if (s.startAfter) {
+       md.appendMarkdown(`**Начало фрагмента**: ${startFound ? '✅' : '❌'} \`${s.startAfter}\`\n\n`);
+      }
+      if (s.endBefore) {
+       md.appendMarkdown(`**Конец фрагмента**: ${endFound ? '✅' : '❌'} \`${s.endBefore}\`\n\n`);
+      }
+
+      if (content !== null && startFound) {
        const preview = extractSnippet(content, s.startAfter, s.endBefore)
         .split('\n')
         .slice(0, 3)
         .join('\n');
-
        md.appendMarkdown('---\n');
        md.appendCodeblock(preview, 'rst');
-      } catch {
-       md.appendMarkdown('❌ Ошибка чтения файла');
       }
      }
 

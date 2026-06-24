@@ -38,31 +38,15 @@ export function registerIncludeSnippetDiagnosticsProvider(context: vscode.Extens
    }
 
    let text: string | null = null;
-   try {
-    text = fs.readFileSync(s.includeFileAbs, 'utf-8');
-   } catch {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Невозможно прочитать файл: ${s.includeFileAbs}`,
-     vscode.DiagnosticSeverity.Error
-    ));
-    continue;
-   }
+   try { text = fs.readFileSync(s.includeFileAbs, 'utf-8'); } catch { /* ignore */ }
 
-   if (s.startAfter && !text.includes(s.startAfter)) {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Не удалось найти начало фрагмента: ${s.startAfter}`,
-     vscode.DiagnosticSeverity.Error
-    ));
+   // Подчёркиваем путь при ненайденных маркерах; сообщение — пробел,
+   // чтобы не дублировать ✅/❌ из ховер-провайдера.
+   if (text !== null && s.startAfter && !text.includes(s.startAfter)) {
+    diagnostics.push(new vscode.Diagnostic(range, ' ', vscode.DiagnosticSeverity.Error));
    }
-
-   if (s.endBefore && !text.includes(s.endBefore)) {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Не удалось найти конец фрагмента: ${s.endBefore}`,
-     vscode.DiagnosticSeverity.Warning
-    ));
+   if (text !== null && s.endBefore && !text.includes(s.endBefore)) {
+    diagnostics.push(new vscode.Diagnostic(range, ' ', vscode.DiagnosticSeverity.Warning));
    }
   }
 

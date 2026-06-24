@@ -22,24 +22,16 @@ export function registerIncludeDefinitionProvider(
      if (!fs.existsSync(file)) return;
 
      const targetDoc = await vscode.workspace.openTextDocument(file);
-
-     let targetRange = new vscode.Range(0, 0, 0, 0);
+     const lines = targetDoc.getText().split(/\r?\n/);
 
      if (marker) {
-      const lines = targetDoc.getText().split(/\r?\n/);
-      const idx = lines.findIndex(l =>
-       l.includes(`{{start-after ${marker}}}`)
-      );
-
-      if (idx !== -1) {
-       targetRange = new vscode.Range(idx + 1, 0, idx + 1, 0);
-      }
+      const idx = lines.findIndex(l => l.includes(`{{start-after ${marker}}}`));
+      if (idx === -1) return;
+      const targetRange = new vscode.Range(idx + 1, 0, idx + 1, 0);
+      return new vscode.Location(targetDoc.uri, targetRange);
      }
 
-     return new vscode.Location(
-      targetDoc.uri,
-      targetRange
-     );
+     return new vscode.Location(targetDoc.uri, new vscode.Range(0, 0, 0, 0));
     }
    }
   )
