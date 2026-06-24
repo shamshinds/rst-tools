@@ -37,33 +37,8 @@ export function registerIncludeSnippetDiagnosticsProvider(context: vscode.Extens
     continue;
    }
 
-   let text: string | null = null;
-   try {
-    text = fs.readFileSync(s.includeFileAbs, 'utf-8');
-   } catch {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Невозможно прочитать файл: ${s.includeFileAbs}`,
-     vscode.DiagnosticSeverity.Error
-    ));
-    continue;
-   }
-
-   if (s.startAfter && !text.includes(s.startAfter)) {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Не удалось найти начало фрагмента: ${s.startAfter}`,
-     vscode.DiagnosticSeverity.Error
-    ));
-   }
-
-   if (s.endBefore && !text.includes(s.endBefore)) {
-    diagnostics.push(new vscode.Diagnostic(
-     range,
-     `❌ Не удалось найти конец фрагмента: ${s.endBefore}`,
-     vscode.DiagnosticSeverity.Warning
-    ));
-   }
+   // Статус маркеров start-after/end-before отображается в ховере через ✅/❌
+   // и не дублируется здесь как диагностика.
   }
 
   collection.set(doc.uri, diagnostics);
