@@ -37,8 +37,17 @@ export function registerIncludeSnippetDiagnosticsProvider(context: vscode.Extens
     continue;
    }
 
-   // Статус маркеров start-after/end-before отображается в ховере через ✅/❌
-   // и не дублируется здесь как диагностика.
+   let text: string | null = null;
+   try { text = fs.readFileSync(s.includeFileAbs, 'utf-8'); } catch { /* ignore */ }
+
+   // Подчёркиваем путь при ненайденных маркерах; сообщение — пробел,
+   // чтобы не дублировать ✅/❌ из ховер-провайдера.
+   if (text !== null && s.startAfter && !text.includes(s.startAfter)) {
+    diagnostics.push(new vscode.Diagnostic(range, ' ', vscode.DiagnosticSeverity.Error));
+   }
+   if (text !== null && s.endBefore && !text.includes(s.endBefore)) {
+    diagnostics.push(new vscode.Diagnostic(range, ' ', vscode.DiagnosticSeverity.Warning));
+   }
   }
 
   collection.set(doc.uri, diagnostics);
