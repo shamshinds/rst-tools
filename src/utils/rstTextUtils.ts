@@ -50,8 +50,10 @@ export function buildLiteralLineSet(text: string): Set<number> {
    continue;
   }
 
-  // Literal block: paragraph ending with "::" or a standalone "::"
-  if (trimmed === '::' || (trimmed.endsWith('::') && trimmed !== '..')) {
+  // Literal block: regular text paragraph ending with "::" or standalone "::".
+  // Строки вида ".. directive::" — это RST-директивы, а не маркеры литерального блока,
+  // поэтому их намеренно исключаем.
+  if (!trimmed.startsWith('..') && (trimmed === '::' || trimmed.endsWith('::'))) {
    blockBaseIndent = indent;
    awaitingContent = true;
   }
