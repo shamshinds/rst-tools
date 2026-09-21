@@ -1,0 +1,28 @@
+# Что не попадает в .vsix.
+#
+# Важно: при наличии этого файла vsce перестает опираться на поле "files"
+# из package.json, поэтому здесь перечислено все лишнее, а не только тесты.
+
+# Исходники и конфигурация сборки
+src/**
+tsconfig.json
+eslint.config.mjs
+package-lock.json
+
+# Скомпилированные тесты и инфраструктура тестов
+out/test/**
+.vscode-test/**
+.vscode-test.mjs
+
+# Служебное
+.vscode/**
+.claude/**
+.thumbs/**
+.gitignore
+.github/**
+CLAUDE.md
+CHANGELOG.md
+vsc-extension-quickstart.md
+
+# Собранные пакеты
+*.vsix

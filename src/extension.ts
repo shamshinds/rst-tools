@@ -18,6 +18,8 @@ import { registerTermHoverProvider } from './providers/termHoverProvider';
 import { registerTermDiagnosticsProvider } from './providers/termDiagnosticsProvider';
 import { registerFlatTableCommand } from './tables/flatTableCommand';
 import { registerVariableHighlightProvider } from './providers/variableHighlightProvider';
+import { registerConvertUrlToDocCommand } from './urls/convertUrlToDocCommand';
+import { registerMaskUuidCommand } from './uuid/maskUuidCommand';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -47,6 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
  registerFlatTableCommand(context);
 
  registerVariableHighlightProvider(context);
+
+ registerConvertUrlToDocCommand(context);
+ registerMaskUuidCommand(context);
 
 }
 

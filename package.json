@@ -3,7 +3,7 @@
   "displayName": "rst-tools",
   "publisher": "dsshamshin",
   "description": "tools for restructuredtext markup",
-  "version": "1.3.5",
+  "version": "1.4.0",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -14,16 +14,19 @@
     "onLanguage:restructuredtext"
   ],
   "main": "./out/extension.js",
-  "files": [
-    "out/**/*",
-    "package.json",
-    "README.md"
-  ],
   "contributes": {
     "commands": [
       {
         "command": "rstTools.insertFlatTable",
         "title": "RST Tools: Вставить flat-table"
+      },
+      {
+        "command": "rstTools.convertUrlToDoc",
+        "title": "RST Tools: Преобразовать URL в роль doc"
+      },
+      {
+        "command": "rstTools.maskUuids",
+        "title": "RST Tools: Замаскировать UUID в документе"
       }
     ],
     "keybindings": [
@@ -31,6 +34,18 @@
         "command": "rstTools.insertFlatTable",
         "key": "ctrl+shift+t",
         "mac": "cmd+shift+t",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.convertUrlToDoc",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.maskUuids",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ],
@@ -57,6 +72,16 @@
           "default": 3,
           "minimum": 1,
           "description": "Количество строк фрагмента, которые показываются в ховере у инклюда."
+        },
+        "rstTools.docsBaseUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "https://cloud.ru/docs/"
+          ],
+          "description": "Базовые адреса сайта документации. URL, начинающиеся с них, преобразуются в роль :doc: командой \"RST Tools: Преобразовать URL в роль doc\"."
         }
       }
     }

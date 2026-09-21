@@ -19,6 +19,9 @@ export function registerDocLinkProvider(context: vscode.ExtensionContext) {
     const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
     if (!workspaceRoot) return links;
 
+    // Один проход по файловой системе на весь документ, а не на каждую ссылку.
+    const projectsById = new Map(discoverProjects(workspaceRoot).map(p => [p.id, p]));
+
     const re = new RegExp(DOC_LINK_RE.source, 'g');
     let m: RegExpExecArray | null;
 
@@ -33,7 +36,7 @@ export function registerDocLinkProvider(context: vscode.ExtensionContext) {
      if (raw.includes(':')) {
       const [projectId, rel] = raw.split(':', 2);
 
-      const project = discoverProjects(workspaceRoot).find(p => p.id === projectId);
+      const project = projectsById.get(projectId);
       if (!project) continue;
 
       target = path.join(project.root, rel.endsWith('.rst') ? rel : `${rel}.rst`);

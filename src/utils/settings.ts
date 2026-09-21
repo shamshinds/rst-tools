@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 const DEFAULT_PROJECTS_ROOTS = ['source/ru/ru'];
+const DEFAULT_DOCS_BASE_URLS = ['https://cloud.ru/docs/'];
 
 /**
  * Списки сегментов пути от корня workspace до каталогов с проектами документации.
@@ -27,6 +28,20 @@ export function isVariableHighlightEnabled(): boolean {
  return vscode.workspace
   .getConfiguration('rstTools')
   .get<boolean>('highlightVariables', false);
+}
+
+/**
+ * Базовые адреса сайта документации, с которых начинаются URL,
+ * преобразуемые в роль `:doc:`.
+ */
+export function getDocsBaseUrls(): string[] {
+ const raw = vscode.workspace
+  .getConfiguration('rstTools')
+  .get<string[]>('docsBaseUrls', DEFAULT_DOCS_BASE_URLS);
+
+ const values = (raw ?? []).map(v => (v ?? '').trim()).filter(Boolean);
+
+ return values.length > 0 ? values : DEFAULT_DOCS_BASE_URLS;
 }
 
 export function getIncludePreviewLines(): number {

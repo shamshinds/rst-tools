@@ -23,6 +23,9 @@ export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext)
 
   const diagnostics: vscode.Diagnostic[] = [];
   const text = doc.getText();
+  // Разделы читаются с диска, поэтому собираем их один раз на проверку,
+  // а не на каждую ссылку: validate() вызывается на каждое нажатие клавиши.
+  const projectsById = new Map(discoverProjects(workspaceRoot).map(p => [p.id, p]));
   const re = new RegExp(DOC_LINK_RE.source, 'g');
   let match: RegExpExecArray | null;
 
@@ -38,7 +41,7 @@ export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext)
    if (normalized.includes(':')) {
     const [projectId, relPath] = normalized.split(':', 2);
 
-    const project = discoverProjects(workspaceRoot).find(p => p.id === projectId);
+    const project = projectsById.get(projectId);
     if (!project) {
      diagnostics.push(new vscode.Diagnostic(
       range,
