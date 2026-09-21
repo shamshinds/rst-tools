@@ -20,7 +20,7 @@ export function resolveWorkspaceRootFromFile(filePath: string): string | null {
  return null;
 }
 
-export function getWorkspaceRoot(doc: vscode.TextDocument): string | null {
+function getWorkspaceRoot(doc: vscode.TextDocument): string | null {
  const folder = vscode.workspace.getWorkspaceFolder(doc.uri);
  return folder ? folder.uri.fsPath : null;
 }

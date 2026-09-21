@@ -22,14 +22,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "rstTools.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "rstTools.openIncludeAtMarker",
-        "title": "RST Tools: Open include file at marker"
-      },
-      {
         "command": "rstTools.insertFlatTable",
         "title": "RST Tools: Вставить flat-table"
       }

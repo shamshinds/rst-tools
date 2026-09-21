@@ -11,7 +11,6 @@ import { registerImagePreviewCommand } from './images/previewCommand';
 import { registerDocHoverProvider } from './providers/docHoverProvider';
 import { registerIncludeSnippetHoverProvider } from './providers/includeSnippetHoverProvider';
 import { registerIncludeSnippetDiagnosticsProvider } from './providers/includeSnippetDiagnosticsProvider';
-import { registerOpenIncludeAtMarkerCommand } from './includes/openIncludeAtMarkerCommand';
 import { registerIncludeSnippetLinkProvider } from './providers/includeSnippetLinkProvider';
 import { registerIncludeDefinitionProvider } from './providers/includeDefinitionProvider';
 import { registerTermCompletionProvider } from './providers/termCompletionProvider';
@@ -38,7 +37,6 @@ export function activate(context: vscode.ExtensionContext) {
 
  registerIncludeSnippetHoverProvider(context);
  registerIncludeSnippetDiagnosticsProvider(context);
- registerOpenIncludeAtMarkerCommand(context);
  registerIncludeSnippetLinkProvider(context);
  registerIncludeDefinitionProvider(context);
 

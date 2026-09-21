@@ -7,7 +7,7 @@ import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
 import { includeContext } from '../providers/includeSnippetHoverProvider';
 import { resolveContext } from '../utils/contextResolver';
 
-export const pendingIncludeContext = new Map<string, string>();
+const pendingIncludeContext = new Map<string, string>();
 
 function normalize(p: string): string {
  return path.normalize(p);
