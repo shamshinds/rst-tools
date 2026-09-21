@@ -28,6 +28,10 @@
       {
         "command": "rstTools.convertUrlToDoc",
         "title": "RST Tools: Преобразовать URL в роль doc"
+      },
+      {
+        "command": "rstTools.maskUuids",
+        "title": "RST Tools: Замаскировать UUID в документе"
       }
     ],
     "keybindings": [
@@ -41,6 +45,12 @@
         "command": "rstTools.convertUrlToDoc",
         "key": "ctrl+alt+d",
         "mac": "cmd+alt+d",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.maskUuids",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ],
