@@ -14,11 +14,6 @@
     "onLanguage:restructuredtext"
   ],
   "main": "./out/extension.js",
-  "files": [
-    "out/**/*",
-    "package.json",
-    "README.md"
-  ],
   "contributes": {
     "commands": [
       {
