@@ -24,6 +24,10 @@
       {
         "command": "rstTools.insertFlatTable",
         "title": "RST Tools: Вставить flat-table"
+      },
+      {
+        "command": "rstTools.convertUrlToDoc",
+        "title": "RST Tools: Преобразовать URL в роль doc"
       }
     ],
     "keybindings": [
@@ -31,6 +35,12 @@
         "command": "rstTools.insertFlatTable",
         "key": "ctrl+shift+t",
         "mac": "cmd+shift+t",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.convertUrlToDoc",
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ],
@@ -57,6 +67,16 @@
           "default": 3,
           "minimum": 1,
           "description": "Количество строк фрагмента, которые показываются в ховере у инклюда."
+        },
+        "rstTools.docsBaseUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "https://cloud.ru/docs/"
+          ],
+          "description": "Базовые адреса сайта документации. URL, начинающиеся с них, преобразуются в роль :doc: командой \"RST Tools: Преобразовать URL в роль doc\"."
         }
       }
     }
