@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { getProjectsRootSegmentsList } from '../utils/settings';
 
 export interface GlossaryTerm {
  term: string;
@@ -91,6 +92,9 @@ export function parseGlossaryDir(dirPath: string): GlossaryTerm[] {
 }
 
 export function findGlossaryDir(workspaceRoot: string): string | null {
- const candidate = path.join(workspaceRoot, 'source', 'ru', 'ru', 'glossary', 'list');
- return fs.existsSync(candidate) ? candidate : null;
+ for (const segments of getProjectsRootSegmentsList()) {
+  const candidate = path.join(workspaceRoot, ...segments, 'glossary', 'list');
+  if (fs.existsSync(candidate)) return candidate;
+ }
+ return null;
 }

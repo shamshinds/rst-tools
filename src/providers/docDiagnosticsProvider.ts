@@ -7,6 +7,7 @@ import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
 import { DOC_LINK_RE, normalizeDocTarget, resolveLocalDocTarget } from '../doc/docUtils';
 import { findConfPy } from '../project/projectResolver';
+import { getProjectsRootLabel } from '../utils/settings';
 
 export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext) {
  const collection = vscode.languages.createDiagnosticCollection('rst-doc');
@@ -41,7 +42,7 @@ export function registerDocDiagnosticsProvider(context: vscode.ExtensionContext)
     if (!project) {
      diagnostics.push(new vscode.Diagnostic(
       range,
-      `❌ Проект "${projectId}" не найден в source/ru/ru`,
+      `❌ Проект "${projectId}" не найден в ${getProjectsRootLabel()}`,
       vscode.DiagnosticSeverity.Error
      ));
      continue;

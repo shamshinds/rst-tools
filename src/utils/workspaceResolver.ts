@@ -1,13 +1,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { getProjectsRootSegmentsList } from './settings';
 
 export function resolveWorkspaceRootFromFile(filePath: string): string | null {
  let dir = path.dirname(filePath);
+ const rootSegmentsList = getProjectsRootSegmentsList();
 
  while (true) {
-  const candidate = path.join(dir, 'source', 'ru', 'ru');
-  if (fs.existsSync(candidate)) return dir;
+  if (rootSegmentsList.some(segments => fs.existsSync(path.join(dir, ...segments)))) {
+   return dir;
+  }
 
   const parent = path.dirname(dir);
   if (parent === dir) break;
