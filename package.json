@@ -41,7 +41,33 @@
         "mac": "cmd+shift+t",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "RST Tools",
+      "properties": {
+        "rstTools.projectsRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "source/ru/ru"
+          ],
+          "description": "Пути от корня workspace до каталогов с проектами документации (разделитель — \"/\"). Можно указать несколько каталогов."
+        },
+        "rstTools.highlightVariables": {
+          "type": "boolean",
+          "default": false,
+          "description": "Подсвечивать фон найденных RST-переменных (|variable|) в редакторе."
+        },
+        "rstTools.includePreviewLines": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "description": "Количество строк фрагмента, которые показываются в ховере у инклюда."
+        }
+      }
+    }
   },
   "repository": {
     "type": "git",

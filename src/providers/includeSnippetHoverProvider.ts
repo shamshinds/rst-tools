@@ -3,6 +3,7 @@ import * as fs from 'fs';
 
 import { findConfPy } from '../project/projectResolver';
 import { parseIncludeSnippets } from '../parsing/includeSnippetParser';
+import { getIncludePreviewLines } from '../utils/settings';
 
 export const includeContext = new Map<string, string>();
 
@@ -104,7 +105,7 @@ export function registerIncludeSnippetHoverProvider(context: vscode.ExtensionCon
       if (content !== null && startFound) {
        const preview = extractSnippet(content, s.startAfter, s.endBefore)
         .split('\n')
-        .slice(0, 3)
+        .slice(0, getIncludePreviewLines())
         .join('\n');
        md.appendMarkdown('---\n');
        md.appendCodeblock(preview, 'rst');

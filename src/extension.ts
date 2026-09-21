@@ -18,6 +18,7 @@ import { registerTermCompletionProvider } from './providers/termCompletionProvid
 import { registerTermHoverProvider } from './providers/termHoverProvider';
 import { registerTermDiagnosticsProvider } from './providers/termDiagnosticsProvider';
 import { registerFlatTableCommand } from './tables/flatTableCommand';
+import { registerVariableHighlightProvider } from './providers/variableHighlightProvider';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -46,6 +47,8 @@ export function activate(context: vscode.ExtensionContext) {
  registerTermDiagnosticsProvider(context);
 
  registerFlatTableCommand(context);
+
+ registerVariableHighlightProvider(context);
 
 }
 
