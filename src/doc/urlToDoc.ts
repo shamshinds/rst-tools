@@ -14,7 +14,8 @@ export interface DocUrlParts {
  projectId: string;
 }
 
-const SECTIONS = ['ug', 'ag'];
+// Раздел — любая подпапка проекта, поэтому фиксированного списка нет.
+// Существование раздела проверяет вызывающий код по discoverProjects.
 
 /** Приводит базовый URL к виду "host/path/" без схемы, www и лишних слешей. */
 function normalizeBase(raw: string): string {
@@ -68,9 +69,8 @@ export function parseDocsUrl(rawUrl: string, baseUrls: string[]): DocUrlParts | 
  // Минимум: проект, раздел и хотя бы одна часть пути к документу.
  if (segments.length < 3) return null;
 
- const [projectName, rawSection, ...docSegments] = segments;
- const section = rawSection.toLowerCase();
- if (!SECTIONS.includes(section)) return null;
+ // Регистр раздела сохраняем: он совпадает с именем каталога на диске.
+ const [projectName, section, ...docSegments] = segments;
 
  const docPath = docSegments.join('/');
  if (!docPath) return null;

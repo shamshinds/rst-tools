@@ -58,11 +58,16 @@ suite('urlToDoc: parseDocsUrl', () => {
   );
  });
 
- test('возвращает null для неизвестного раздела', () => {
-  assert.strictEqual(
-   parseDocsUrl('https://cloud.ru/docs/zero/api/topics/start', BASE),
-   null
-  );
+ test('разделом может быть любая подпапка, не только ug и ag', () => {
+  const parts = parseDocsUrl('https://cloud.ru/docs/folder/overview/index', BASE);
+  assert.strictEqual(parts?.projectId, 'folder__overview');
+  assert.strictEqual(parts?.docPath, 'index');
+ });
+
+ test('сохраняет регистр раздела — это имя каталога на диске', () => {
+  const parts = parseDocsUrl('https://cloud.ru/docs/zero/Overview/topics/start', BASE);
+  assert.strictEqual(parts?.section, 'Overview');
+  assert.strictEqual(parts?.projectId, 'zero__Overview');
  });
 
  test('возвращает null, если пути к документу нет', () => {

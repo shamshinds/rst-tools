@@ -3,7 +3,6 @@ import * as path from 'path';
 
 import { discoverProjects } from '../doc/projectRegistry';
 import { parseDocsUrl, buildRelativeDocPath, wrapInDocRole } from '../doc/urlToDoc';
-import { findConfPy } from '../project/projectResolver';
 import { getEffectiveFilePath } from '../utils/contextResolver';
 import { resolveWorkspaceRoot } from '../utils/workspaceResolver';
 import { getDocsBaseUrls } from '../utils/settings';
@@ -26,22 +25,32 @@ function findUrlRange(editor: vscode.TextEditor): vscode.Range | null {
  return document.getWordRangeAtPosition(selection.active, URL_REGEX) ?? null;
 }
 
+/** Лежит ли файл внутри каталога. */
+function isInside(filePath: string, dir: string): boolean {
+ const relative = path.relative(dir, filePath);
+ return !!relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 /**
- * Идентификатор проекта, которому принадлежит открытый файл.
- * Нужен, чтобы ссылку внутри своего проекта записать относительным путем.
+ * Раздел документации, которому принадлежит открытый файл.
+ * Нужен, чтобы ссылку внутри своего раздела записать относительным путем.
+ *
+ * Ищем по вхождению пути, а не по conf.py: у раздела, опознанного
+ * по наличию .rst, собственного conf.py может не быть.
  */
 function findCurrentProject(
  effectivePath: string,
  doc: vscode.TextDocument
 ): { id: string; root: string } | null {
  const workspaceRoot = resolveWorkspaceRoot(effectivePath, doc);
- const confPath = findConfPy(effectivePath);
- if (!workspaceRoot || !confPath) return null;
+ if (!workspaceRoot) return null;
 
- const projectRoot = path.normalize(path.dirname(confPath));
+ const filePath = path.normalize(effectivePath);
 
+ // Самый глубокий подходящий раздел — на случай вложенных корней.
  return discoverProjects(workspaceRoot)
-  .find(p => path.normalize(p.root) === projectRoot) ?? null;
+  .filter(p => isInside(filePath, path.normalize(p.root)))
+  .sort((a, b) => b.root.length - a.root.length)[0] ?? null;
 }
 
 export function registerConvertUrlToDocCommand(context: vscode.ExtensionContext) {
