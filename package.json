@@ -3,7 +3,7 @@
   "displayName": "rst-tools",
   "publisher": "dsshamshin",
   "description": "tools for restructuredtext markup",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -21,8 +21,12 @@
         "title": "RST Tools: Вставить flat-table"
       },
       {
-        "command": "rstTools.convertUrlToDoc",
-        "title": "RST Tools: Преобразовать URL в роль doc"
+        "command": "rstTools.insertDocLink",
+        "title": "RST Tools: Вставить ссылку doc"
+      },
+      {
+        "command": "rstTools.insertExternalLink",
+        "title": "RST Tools: Вставить внешнюю ссылку"
       },
       {
         "command": "rstTools.maskUuids",
@@ -37,9 +41,15 @@
         "when": "editorTextFocus && editorLangId == restructuredtext"
       },
       {
-        "command": "rstTools.convertUrlToDoc",
+        "command": "rstTools.insertExternalLink",
         "key": "ctrl+shift+l",
         "mac": "cmd+shift+l",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.insertDocLink",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       },
       {

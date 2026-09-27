@@ -1,7 +1,15 @@
 import * as assert from 'assert';
 import * as path from 'path';
 
-import { parseDocsUrl, buildRelativeDocPath, wrapInDocRole } from '../doc/urlToDoc';
+import {
+ parseDocsUrl,
+ buildRelativeDocPath,
+ wrapInDocRole,
+ buildExternalLink,
+ normalizeLinkText,
+ looksLikeUrl,
+ PLACEHOLDER_DOC_TARGET
+} from '../doc/urlToDoc';
 
 const BASE = ['https://cloud.ru/docs/'];
 
@@ -138,5 +146,94 @@ suite('urlToDoc: wrapInDocRole', () => {
    wrapInDocRole('virtual-machines__ug:topics/guides__power-on'),
    ':doc:`virtual-machines__ug:topics/guides__power-on`'
   );
+ });
+
+ test('подставляет текст ссылки', () => {
+  assert.strictEqual(
+   wrapInDocRole('virtual-machines__ug:topics/guides__power-on', 'Включение ВМ'),
+   ':doc:`Включение ВМ <virtual-machines__ug:topics/guides__power-on>`'
+  );
+ });
+
+ test('пустой и пробельный текст не создает угловых скобок', () => {
+  assert.strictEqual(wrapInDocRole('topics/x', ''), ':doc:`topics/x`');
+  assert.strictEqual(wrapInDocRole('topics/x', '   '), ':doc:`topics/x`');
+ });
+
+ test('текст ссылки сворачивается в одну строку', () => {
+  assert.strictEqual(
+   wrapInDocRole('topics/x', ' Включение\n  ВМ '),
+   ':doc:`Включение ВМ <topics/x>`'
+  );
+ });
+
+ test('работает с заглушкой цели', () => {
+  assert.strictEqual(
+   wrapInDocRole(PLACEHOLDER_DOC_TARGET, 'Включение ВМ'),
+   ':doc:`Включение ВМ <./>`'
+  );
+ });
+});
+
+suite('urlToDoc: buildExternalLink', () => {
+
+ test('собирает анонимную внешнюю ссылку', () => {
+  assert.strictEqual(
+   buildExternalLink('портал', 'https://cloud.ru'),
+   '`портал <https://cloud.ru>`__'
+  );
+ });
+
+ test('обрезает пробелы вокруг текста и URL', () => {
+  assert.strictEqual(
+   buildExternalLink('  портал  ', '  https://cloud.ru  '),
+   '`портал <https://cloud.ru>`__'
+  );
+ });
+
+ test('многострочный текст сворачивается в одну строку', () => {
+  assert.strictEqual(
+   buildExternalLink('портал\nCloud', 'https://cloud.ru'),
+   '`портал Cloud <https://cloud.ru>`__'
+  );
+ });
+
+ test('сохраняет query-параметры URL', () => {
+  assert.strictEqual(
+   buildExternalLink('док', 'https://cloud.ru/docs/a/ug/b?x=1'),
+   '`док <https://cloud.ru/docs/a/ug/b?x=1>`__'
+  );
+ });
+});
+
+suite('urlToDoc: normalizeLinkText', () => {
+
+ test('сворачивает пробелы и переводы строк', () => {
+  assert.strictEqual(normalizeLinkText(' a \n\t b  c '), 'a b c');
+ });
+
+ test('пустой ввод дает пустую строку', () => {
+  assert.strictEqual(normalizeLinkText(''), '');
+  assert.strictEqual(normalizeLinkText('   \n '), '');
+ });
+});
+
+suite('urlToDoc: looksLikeUrl', () => {
+
+ test('распознает http и https', () => {
+  assert.ok(looksLikeUrl('https://cloud.ru/docs/a/ug/b'));
+  assert.ok(looksLikeUrl('http://example.com'));
+  assert.ok(looksLikeUrl('  https://cloud.ru  '));
+ });
+
+ test('не принимает текст и другие схемы', () => {
+  assert.ok(!looksLikeUrl('обычный текст'));
+  assert.ok(!looksLikeUrl(''));
+  assert.ok(!looksLikeUrl('ftp://example.com'));
+  assert.ok(!looksLikeUrl('cloud.ru/docs'));
+ });
+
+ test('не принимает URL с пробелом внутри', () => {
+  assert.ok(!looksLikeUrl('https://cloud.ru a'));
  });
 });
