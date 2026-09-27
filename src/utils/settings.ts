@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 const DEFAULT_PROJECTS_ROOTS = ['source/ru/ru'];
 const DEFAULT_DOCS_BASE_URLS = ['https://cloud.ru/docs/'];
+const DEFAULT_FILTER_TAGS = ['public', 'private'];
 
 /**
  * Списки сегментов пути от корня workspace до каталогов с проектами документации.
@@ -42,6 +43,18 @@ export function getDocsBaseUrls(): string[] {
  const values = (raw ?? []).map(v => (v ?? '').trim()).filter(Boolean);
 
  return values.length > 0 ? values : DEFAULT_DOCS_BASE_URLS;
+}
+
+/**
+ * Теги версий документа, предлагаемые при выборе версии.
+ * Теги, найденные в самом файле, добавляются к этому списку.
+ */
+export function getFilterTags(): string[] {
+ const raw = vscode.workspace
+  .getConfiguration('rstTools')
+  .get<string[]>('filterTags', DEFAULT_FILTER_TAGS);
+
+ return (raw ?? []).map(v => (v ?? '').trim()).filter(Boolean);
 }
 
 export function getIncludePreviewLines(): number {

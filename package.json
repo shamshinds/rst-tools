@@ -3,7 +3,7 @@
   "displayName": "rst-tools",
   "publisher": "dsshamshin",
   "description": "tools for restructuredtext markup",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -31,6 +31,10 @@
       {
         "command": "rstTools.maskUuids",
         "title": "RST Tools: Замаскировать UUID в документе"
+      },
+      {
+        "command": "rstTools.previewFilteredContent",
+        "title": "RST Tools: Показать версию документа по тегу"
       }
     ],
     "keybindings": [
@@ -56,6 +60,12 @@
         "command": "rstTools.maskUuids",
         "key": "ctrl+shift+u",
         "mac": "cmd+shift+u",
+        "when": "editorTextFocus && editorLangId == restructuredtext"
+      },
+      {
+        "command": "rstTools.previewFilteredContent",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
         "when": "editorTextFocus && editorLangId == restructuredtext"
       }
     ],
@@ -92,6 +102,17 @@
             "https://cloud.ru/docs/"
           ],
           "description": "Базовые адреса сайта документации. URL, начинающиеся с них, преобразуются в роль :doc: командой \"RST Tools: Преобразовать URL в роль doc\"."
+        },
+        "rstTools.filterTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "public",
+            "private"
+          ],
+          "description": "Теги версий документа для директивы only и роли filter. Предлагаются при выборе версии по команде \"RST Tools: Показать версию документа по тегу\"; теги, найденные в самом файле, добавляются к этому списку автоматически."
         }
       }
     }
