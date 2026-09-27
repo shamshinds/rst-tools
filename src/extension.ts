@@ -21,6 +21,7 @@ import { registerVariableHighlightProvider } from './providers/variableHighlight
 import { registerInsertDocLinkCommand } from './urls/insertDocLinkCommand';
 import { registerInsertExternalLinkCommand } from './urls/insertExternalLinkCommand';
 import { registerMaskUuidCommand } from './uuid/maskUuidCommand';
+import { registerFilterPreviewCommand } from './filter/filterPreviewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
  console.log('[RST] Extension activated');
@@ -54,6 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
  registerInsertDocLinkCommand(context);
  registerInsertExternalLinkCommand(context);
  registerMaskUuidCommand(context);
+ registerFilterPreviewCommand(context);
 
 }
 
