@@ -4,7 +4,8 @@ import {
  filterRstContent,
  collectTags,
  applyFilterRole,
- ALL_TAG
+ ALL_TAG,
+ LIST_BREAK_COMMENT
 } from '../filter/contentFilter';
 
 /** Собирает текст из строк — чтобы отступы в тестах были видны явно. */
@@ -221,5 +222,199 @@ suite('contentFilter: collectTags', () => {
 
  test('текст без конструкций дает пустой список', () => {
   assert.deepStrictEqual(collectTags(lines('Просто', 'текст')), []);
+ });
+});
+
+suite('contentFilter: only внутри пункта списка', () => {
+
+ const ITEM = lines(
+  '#. ',
+  '   .. only:: public',
+  '   ',
+  '      Четвертый пункт паблик.',
+  '      Еще предложение.',
+  '',
+  '   .. only:: private',
+  '      ',
+  '      Четвертый пункт приват',
+  '',
+  '#. Следующий пункт'
+ );
+
+ test('текст подтягивается на строку маркера, продолжение выравнивается по тексту', () => {
+  assert.strictEqual(
+   filterRstContent(ITEM, 'public'),
+   lines(
+    '#. Четвертый пункт паблик.',
+    '   Еще предложение.',
+    '',
+    '#. Следующий пункт'
+   )
+  );
+ });
+
+ test('подтягивается и блок, который идет вторым после выброшенного', () => {
+  assert.strictEqual(
+   filterRstContent(ITEM, 'private'),
+   lines('#. Четвертый пункт приват', '', '#. Следующий пункт')
+  );
+ });
+
+ test('пункт с текстом на строке маркера не трогается', () => {
+  const source = lines(
+   '#. Текст пункта',
+   '',
+   '   .. only:: public',
+   '',
+   '      Дополнение',
+   ''
+  );
+
+  assert.strictEqual(
+   filterRstContent(source, 'public'),
+   lines('#. Текст пункта', '', '   Дополнение', '')
+  );
+ });
+
+ test('директиву на строку маркера не подтягиваем', () => {
+  const source = lines(
+   '#. ',
+   '   .. only:: public',
+   '',
+   '      .. code-block:: bash',
+   '',
+   '         echo hi'
+  );
+
+  assert.strictEqual(
+   filterRstContent(source, 'public'),
+   lines('#. ', '   .. code-block:: bash', '', '      echo hi')
+  );
+ });
+
+ test('маркеры других видов тоже работают', () => {
+  const source = lines('- ', '  .. only:: public', '', '     текст');
+  assert.strictEqual(filterRstContent(source, 'public'), '- текст');
+
+  const numbered = lines('12. ', '    .. only:: public', '', '       текст', '       дальше');
+  assert.strictEqual(filterRstContent(numbered, 'public'), lines('12. текст', '    дальше'));
+ });
+
+ test('если ничего не подошло, пустой маркер остается как есть', () => {
+  assert.strictEqual(
+   filterRstContent(ITEM, 'draft'),
+   lines('#. ', '', '#. Следующий пункт')
+  );
+ });
+});
+
+suite('contentFilter: only обрывает список', () => {
+
+ const LIST = lines(
+  '#. Четвертый пункт',
+  '',
+  '.. only:: public',
+  '   ',
+  '   #. Пятый пункт паблик',
+  '',
+  '#. Шестой пункт.'
+ );
+
+ test('пункт внутри only отделяется пометками с обеих сторон', () => {
+  assert.strictEqual(
+   filterRstContent(LIST, 'public'),
+   lines(
+    '#. Четвертый пункт',
+    '',
+    LIST_BREAK_COMMENT,
+    '',
+    '#. Пятый пункт паблик',
+    '',
+    LIST_BREAK_COMMENT,
+    '',
+    '#. Шестой пункт.'
+   )
+  );
+ });
+
+ test('выброшенный only между пунктами тоже разрывает список', () => {
+  assert.strictEqual(
+   filterRstContent(LIST, 'private'),
+   lines('#. Четвертый пункт', '', LIST_BREAK_COMMENT, '', '#. Шестой пункт.')
+  );
+ });
+
+ test('два only подряд между пунктами дают разрыв на каждой границе', () => {
+  const source = lines(
+   '#. Раз',
+   '',
+   '.. only:: public',
+   '',
+   '   #. Два паблик',
+   '',
+   '.. only:: private',
+   '',
+   '   #. Два приват',
+   '',
+   '#. Три'
+  );
+
+  assert.strictEqual(
+   filterRstContent(source, 'public'),
+   lines(
+    '#. Раз', '', LIST_BREAK_COMMENT, '', '#. Два паблик',
+    '', LIST_BREAK_COMMENT, '', '#. Три'
+   )
+  );
+ });
+
+ test('only между абзацами пометку не добавляет', () => {
+  const source = lines('Абзац', '', '.. only:: public', '', '   Текст', '', 'Абзац');
+  assert.ok(!filterRstContent(source, 'public').includes(LIST_BREAK_COMMENT));
+  assert.ok(!filterRstContent(source, 'private').includes(LIST_BREAK_COMMENT));
+ });
+
+ test('only внутри пункта не разрывает внешний список', () => {
+  const source = lines(
+   '#. Раз',
+   '',
+   '   .. only:: public',
+   '',
+   '      Уточнение',
+   '',
+   '#. Два'
+  );
+
+  assert.ok(!filterRstContent(source, 'public').includes(LIST_BREAK_COMMENT));
+  assert.ok(!filterRstContent(source, 'private').includes(LIST_BREAK_COMMENT));
+ });
+
+ test('пометка — это комментарий RST, а не директива', () => {
+  assert.ok(LIST_BREAK_COMMENT.startsWith('.. '));
+  assert.ok(!LIST_BREAK_COMMENT.includes('::'), 'иначе RST примет ее за директиву');
+ });
+});
+
+suite('contentFilter: знаки препинания после удаленной роли', () => {
+
+ test('пробел перед точкой после удаленной роли убирается', () => {
+  assert.strictEqual(
+   applyFilterRole('собака :filter:`<public> бобик` :filter:`<private> шарик`.', 'public'),
+   'собака бобик.'
+  );
+ });
+
+ test('пробел перед запятой тоже', () => {
+  assert.strictEqual(
+   applyFilterRole('Кот :filter:`<private> Мурзик`, привет', 'public'),
+   'Кот, привет'
+  );
+ });
+
+ test('в строке без удаленных ролей пробел перед знаком не трогаем', () => {
+  assert.strictEqual(
+   applyFilterRole('текст :filter:`<public> слово` ; так и было', 'public'),
+   'текст слово ; так и было'
+  );
  });
 });
