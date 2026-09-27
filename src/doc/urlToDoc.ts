@@ -17,6 +17,12 @@ export interface DocUrlParts {
 // Раздел — любая подпапка проекта, поэтому фиксированного списка нет.
 // Существование раздела проверяет вызывающий код по discoverProjects.
 
+/**
+ * Заглушка цели: подставляется, когда текст выделен, но подходящего URL
+ * взять негде. Путь дописывает автор, автодополнение внутри роли работает.
+ */
+export const PLACEHOLDER_DOC_TARGET = './';
+
 /** Приводит базовый URL к виду "host/path/" без схемы, www и лишних слешей. */
 function normalizeBase(raw: string): string {
  return (raw ?? '')
@@ -99,7 +105,38 @@ export function buildRelativeDocPath(
  return relative.split(path.sep).join('/');
 }
 
-/** Оборачивает путь в роль: :doc:`path` */
-export function wrapInDocRole(target: string): string {
- return `:doc:\`${target}\``;
+/**
+ * Оборачивает путь в роль `:doc:`.
+ *
+ * Без текста — `:doc:`path``, с текстом — `:doc:`текст <path>``.
+ */
+export function wrapInDocRole(target: string, text?: string): string {
+ const label = normalizeLinkText(text ?? '');
+
+ return label
+  ? `:doc:\`${label} <${target}>\``
+  : `:doc:\`${target}\``;
+}
+
+/**
+ * Внешняя ссылка RST: `текст <url>`__
+ *
+ * Двойное подчеркивание — анонимная ссылка, она не требует отдельного
+ * определения цели и не конфликтует с одноименными ссылками в документе.
+ */
+export function buildExternalLink(text: string, url: string): string {
+ return `\`${normalizeLinkText(text)} <${url.trim()}>\`__`;
+}
+
+/**
+ * Текст ссылки в одну строку: переводы строк и повторяющиеся пробелы
+ * сворачиваются в один пробел.
+ */
+export function normalizeLinkText(raw: string): string {
+ return (raw ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/** Похоже ли содержимое буфера обмена на URL. */
+export function looksLikeUrl(raw: string): boolean {
+ return /^https?:\/\/\S+$/i.test((raw ?? '').trim());
 }

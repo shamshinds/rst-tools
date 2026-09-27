@@ -18,7 +18,8 @@ import { registerTermHoverProvider } from './providers/termHoverProvider';
 import { registerTermDiagnosticsProvider } from './providers/termDiagnosticsProvider';
 import { registerFlatTableCommand } from './tables/flatTableCommand';
 import { registerVariableHighlightProvider } from './providers/variableHighlightProvider';
-import { registerConvertUrlToDocCommand } from './urls/convertUrlToDocCommand';
+import { registerInsertDocLinkCommand } from './urls/insertDocLinkCommand';
+import { registerInsertExternalLinkCommand } from './urls/insertExternalLinkCommand';
 import { registerMaskUuidCommand } from './uuid/maskUuidCommand';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -50,7 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
 
  registerVariableHighlightProvider(context);
 
- registerConvertUrlToDocCommand(context);
+ registerInsertDocLinkCommand(context);
+ registerInsertExternalLinkCommand(context);
  registerMaskUuidCommand(context);
 
 }
